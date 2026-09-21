@@ -1,4 +1,5 @@
 ﻿// Shared constants and billing math for the rental contract.
+// TTC only — Drivary Reda Car does not itemize TVA on the contract.
 
 export const DAMAGE_ZONES = [
   "Avant", "Arrière", "Côté gauche", "Côté droit",
@@ -28,13 +29,19 @@ export const DAMAGE_TYPES = [
   { value: "Manque", symbol: "O" },
 ] as const;
 
-export const TVA_RATE = 0.2;
+export const FUEL_TYPES = [
+  { value: "super_sans_plomb", label: "Super sans plomb" },
+  { value: "gasoil", label: "Gasoil" },
+] as const;
+
+// Fuel gauge shown as a quarter dial on the paper contract: 0, 1/4, 1/2, 3/4, 1.
+export const FUEL_LEVELS = [0, 0.25, 0.5, 0.75, 1] as const;
 
 // Fallback only — real minimum now lives per-vehicle in the DB
 // (vehicles.min_rental_days). This is used if that column is null.
 export const DEFAULT_MIN_RENTAL_DAYS = 5;
 
-// Minimal shape needed to price a rental. Matches the new vehicles columns.
+// Minimal shape needed to price a rental. Matches the vehicles columns.
 export interface VehiclePricing {
   price_per_day: number;        // 5–14 days (base rate)
   price_extended_15: number;    // 15–29 days
@@ -73,22 +80,10 @@ export function isRentalDurationValid(
   return days >= minDays;
 }
 
-// Back-compat alias — app/admin/reservations/[id]/page.tsx imports this name.
-export function calculateBilling(
-  vehicle: VehiclePricing,
-  startDate: string,
-  endDate: string
-) {
-  const { days, dailyRate, subtotal } = calculateRentalTotal(vehicle, startDate, endDate);
-  const tva = subtotal * TVA_RATE;
-  return { days, dailyRate, subtotal, tva, total: subtotal + tva };
-}
-
-// Resolves the four figures shown on the contract (days, Total HT, TVA,
-// Total à payer), applying any admin override on top of the normal
-// formula. The underlying formula (TVA on rental only, not on
-// delivery/pickup fees) is left untouched by design — overrides are the
-// per-contract escape hatch instead of a formula change.
+// Resolves the figures shown on the contract (days, Total TTC, Avance,
+// Reste à payer), applying any admin override on top of the normal
+// formula. Overrides are the per-contract escape hatch instead of a
+// formula change.
 export function resolveBilling(
   vehicle: VehiclePricing,
   input: {
@@ -96,40 +91,31 @@ export function resolveBilling(
     end_date: string;
     delivery_fee: number | string;
     pickup_fee: number | string;
-    override_total_ht?: number | string | null;
-    override_tva?: number | string | null;
+    avance: number | string;
     override_total_ttc?: number | string | null;
   }
 ) {
-  const rentalBilling = calculateBilling(vehicle, input.start_date, input.end_date);
+  const { days, subtotal } = calculateRentalTotal(vehicle, input.start_date, input.end_date);
   const deliveryFee = Number(input.delivery_fee) || 0;
   const pickupFee = Number(input.pickup_fee) || 0;
+  const avance = Number(input.avance) || 0;
 
-  const calculatedTotalHT = rentalBilling.subtotal + deliveryFee + pickupFee;
-  const calculatedTVA = rentalBilling.tva;
-  const calculatedTotalTTC = rentalBilling.total + deliveryFee + pickupFee;
+  const calculatedTotalTTC = subtotal + deliveryFee + pickupFee;
 
-  const overrideHT =
-    input.override_total_ht != null && input.override_total_ht !== ""
-      ? Number(input.override_total_ht)
-      : null;
-  const overrideTVA =
-    input.override_tva != null && input.override_tva !== ""
-      ? Number(input.override_tva)
-      : null;
   const overrideTTC =
     input.override_total_ttc != null && input.override_total_ttc !== ""
       ? Number(input.override_total_ttc)
       : null;
 
+  const totalTTC = overrideTTC ?? calculatedTotalTTC;
+  const resteAPayer = totalTTC - avance;
+
   return {
-    days: rentalBilling.days,
-    calculatedTotalHT,
-    calculatedTVA,
+    days,
     calculatedTotalTTC,
-    totalHT: overrideHT ?? calculatedTotalHT,
-    tva: overrideTVA ?? calculatedTVA,
-    totalTTC: overrideTTC ?? calculatedTotalTTC,
-    isOverridden: overrideHT != null || overrideTVA != null || overrideTTC != null,
+    totalTTC,
+    avance,
+    resteAPayer,
+    isOverridden: overrideTTC != null,
   };
 }

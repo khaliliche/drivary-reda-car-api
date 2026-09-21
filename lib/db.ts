@@ -20,16 +20,12 @@ export type Vehicle = {
 
 export type ReservationStatus = "pending" | "contacted" | "confirmed" | "cancelled";
 
-// zone matches DAMAGE_ZONES in lib/contract.ts; type is a short free label
-// ("rayure", "bosse", "fissure", ...) entered by the admin, not an enum,
-// to avoid over-constraining a physical inspection.
 export type DamageEntry = {
   zone: string;
   type: string;
   note: string;
 };
 
-// key matches EQUIPMENT_ITEMS in lib/contract.ts.
 export type EquipmentChecklist = Record<string, boolean>;
 
 export type Reservation = {
@@ -37,51 +33,58 @@ export type Reservation = {
   vehicle_id: number | null;
   vehicle_label: string;
 
-  // Driver (main)
-  full_name: string;
-  age: number;
+  prenom: string;
+  nom: string;
+  date_naissance: string;
   cin_number: string;
+  cin_delivered_le: string | null;
   license_issue_date: string;
   driver_address: string;
   driver_phone: string;
   driver_license_number: string;
   driver_passport_number: string;
+  passport_delivered_le: string | null;
 
-  // Second driver (optional block)
   has_second_driver: boolean;
-  second_driver_full_name: string;
+  second_driver_prenom: string;
+  second_driver_nom: string;
+  second_driver_date_naissance: string | null;
   second_driver_address: string;
   second_driver_phone: string;
   second_driver_cin_number: string;
+  second_driver_cin_delivered_le: string | null;
   second_driver_license_number: string;
   second_driver_passport_number: string;
+  second_driver_passport_delivered_le: string | null;
 
-  // Rental period
   start_date: string;
   end_date: string;
   start_time: string;
   end_time: string;
+  lieu_livraison_depart: string;
+  lieu_livraison_retour: string;
+  retour_prevu_le: string | null;
+  prolongation: string;
 
-  // Admin handover completion
   registration_plate: string;
   mileage_start: number | null;
   mileage_end: number | null;
   damages: DamageEntry[];
   equipment: EquipmentChecklist;
+  fuel_type: string;
+  fuel_level_out: number | null;
+  fuel_level_in: number | null;
   delivery_fee: number;
   pickup_fee: number;
 
-  // Admin contract editing
   fait_a: string;
-  override_total_ht: number | null;
-  override_tva: number | null;
   override_total_ttc: number | null;
+  avance: number;
+  reste_a_payer: number;
 
-  // Contract identity
   contract_number: string | null;
   contract_generated_at: string | null;
 
-  // Remote signing (main driver)
   signing_token: string | null;
   signing_token_expires_at: string | null;
   signer_name: string | null;
@@ -89,13 +92,16 @@ export type Reservation = {
   signer_ip: string | null;
   signature_data: string | null;
 
-  // Remote signing (second driver) — fully independent link/signature
   signing_token_2: string | null;
   signing_token_2_expires_at: string | null;
   signer_2_name: string | null;
   signed_2_at: string | null;
   signer_2_ip: string | null;
   signature_2_data: string | null;
+
+  admin_signature_data: string | null;
+  admin_signed_at: string | null;
+  admin_signer_name: string | null;
 
   status: ReservationStatus;
   created_at: string;
@@ -178,16 +184,13 @@ export async function deleteVehicle(id: number) {
   await sql`DELETE FROM vehicles WHERE id = ${id}`;
 }
 
-// Fields the client-facing reservation form collects. Admin handover
-// fields (plate, mileage, damages, equipment, fees) are deliberately not
-// accepted here — they're only ever set via updateReservationHandover()
-// (see Step 4), so a client submission can never forge them.
 export type CreateReservationInput = {
   vehicle_id: number;
   vehicle_label: string;
 
-  full_name: string;
-  age: number;
+  prenom: string;
+  nom: string;
+  date_naissance: string;
   cin_number: string;
   license_issue_date: string;
   driver_address: string;
@@ -196,7 +199,8 @@ export type CreateReservationInput = {
   driver_passport_number: string;
 
   has_second_driver: boolean;
-  second_driver_full_name?: string;
+  second_driver_prenom?: string;
+  second_driver_nom?: string;
   second_driver_address?: string;
   second_driver_phone?: string;
   second_driver_cin_number?: string;
@@ -215,18 +219,18 @@ export async function createReservation(
   const rows = await sql<Reservation[]>`
     INSERT INTO reservations
       (vehicle_id, vehicle_label,
-       full_name, age, cin_number, license_issue_date,
+       prenom, nom, date_naissance, cin_number, license_issue_date,
        driver_address, driver_phone, driver_license_number, driver_passport_number,
        has_second_driver,
-       second_driver_full_name, second_driver_address, second_driver_phone,
+       second_driver_prenom, second_driver_nom, second_driver_address, second_driver_phone,
        second_driver_cin_number, second_driver_license_number, second_driver_passport_number,
        start_date, end_date, start_time, end_time)
     VALUES
       (${data.vehicle_id}, ${data.vehicle_label},
-       ${data.full_name}, ${data.age}, ${data.cin_number}, ${data.license_issue_date},
+       ${data.prenom}, ${data.nom}, ${data.date_naissance}, ${data.cin_number}, ${data.license_issue_date},
        ${data.driver_address}, ${data.driver_phone}, ${data.driver_license_number}, ${data.driver_passport_number},
        ${data.has_second_driver},
-       ${data.second_driver_full_name ?? ""}, ${data.second_driver_address ?? ""}, ${data.second_driver_phone ?? ""},
+       ${data.second_driver_prenom ?? ""}, ${data.second_driver_nom ?? ""}, ${data.second_driver_address ?? ""}, ${data.second_driver_phone ?? ""},
        ${data.second_driver_cin_number ?? ""}, ${data.second_driver_license_number ?? ""}, ${data.second_driver_passport_number ?? ""},
        ${data.start_date}, ${data.end_date}, ${data.start_time}, ${data.end_time})
     RETURNING *
@@ -248,9 +252,6 @@ export async function updateReservationStatus(id: number, status: ReservationSta
   await sql`UPDATE reservations SET status = ${status} WHERE id = ${id}`;
 }
 
-// Feature 2 — availability. Only CONFIRMED reservations block a vehicle;
-// pending/contacted requests are just leads and don't reserve the car.
-// Uses idx_reservations_vehicle_status_dates (see migrations/002_*.sql).
 export async function isVehicleAvailable(
   vehicleId: number,
   startDate: string,
@@ -278,9 +279,6 @@ export async function isVehicleAvailable(
   return rows.length === 0;
 }
 
-// Vehicles list for /vehicules. If no dates are given, returns the full
-// fleet (unchanged behaviour). If dates are given, excludes any vehicle
-// with a confirmed reservation overlapping that range.
 export async function getAvailableVehicles(
   startDate?: string,
   endDate?: string
@@ -298,11 +296,6 @@ export async function getAvailableVehicles(
   return vehicles.filter((v) => !bookedIds.has(v.id));
 }
 
-// Confirming a reservation is the moment it actually blocks the vehicle,
-// so this is where we re-check for a conflicting confirmed booking
-// (another admin could have confirmed an overlapping request in the
-// meantime). Returns a reason instead of throwing so the UI can show a
-// friendly message.
 export async function confirmReservation(
   id: number
 ): Promise<{ ok: true } | { ok: false; reason: "conflict" | "notFound" }> {
@@ -326,7 +319,7 @@ export async function confirmReservation(
     SET status = 'confirmed',
         contract_number = COALESCE(
           contract_number,
-          'ARC-' || to_char(now(), 'YYYY') || '-' || lpad(id::text, 5, '0')
+          lpad(nextval('contract_number_seq')::text, 7, '0')
         ),
         contract_generated_at = COALESCE(contract_generated_at, now())
     WHERE id = ${id}
@@ -334,9 +327,6 @@ export async function confirmReservation(
   return { ok: true };
 }
 
-// Feature 1 — admin handover completion (plate, mileage, damages,
-// equipment, delivery/pickup fees). Deliberately separate from the
-// client-facing createReservation() input.
 export async function updateReservationHandover(
   id: number,
   data: {
@@ -345,6 +335,9 @@ export async function updateReservationHandover(
     mileage_end: number | null;
     damages: DamageEntry[];
     equipment: EquipmentChecklist;
+    fuel_type: string;
+    fuel_level_out: number | null;
+    fuel_level_in: number | null;
     delivery_fee: number;
     pickup_fee: number;
   }
@@ -356,6 +349,9 @@ export async function updateReservationHandover(
         mileage_end = ${data.mileage_end},
         damages = ${sql.json(data.damages)},
         equipment = ${sql.json(data.equipment)},
+        fuel_type = ${data.fuel_type},
+        fuel_level_out = ${data.fuel_level_out},
+        fuel_level_in = ${data.fuel_level_in},
         delivery_fee = ${data.delivery_fee},
         pickup_fee = ${data.pickup_fee}
     WHERE id = ${id}
@@ -368,29 +364,30 @@ export async function deleteReservation(id: number) {
   await sql`DELETE FROM reservations WHERE id = ${id}`;
 }
 
-// Feature 3 — full contract editing. Lets an admin correct any section of
-// the PDF (driver, second driver, vehicle label/plate, dates, handover
-// details, and an optional manual override of the three billing totals)
-// from one form, before (re)generating the PDF. Billing overrides are
-// nullable: leaving them blank keeps the normal calculated value (see
-// lib/contract.ts:resolveBilling).
 export type UpdateReservationContractInput = {
-  full_name: string;
-  age: number;
+  prenom: string;
+  nom: string;
+  date_naissance: string;
   cin_number: string;
+  cin_delivered_le: string | null;
   license_issue_date: string;
   driver_address: string;
   driver_phone: string;
   driver_license_number: string;
   driver_passport_number: string;
+  passport_delivered_le: string | null;
 
   has_second_driver: boolean;
-  second_driver_full_name: string;
+  second_driver_prenom: string;
+  second_driver_nom: string;
+  second_driver_date_naissance: string | null;
   second_driver_address: string;
   second_driver_phone: string;
   second_driver_cin_number: string;
+  second_driver_cin_delivered_le: string | null;
   second_driver_license_number: string;
   second_driver_passport_number: string;
+  second_driver_passport_delivered_le: string | null;
 
   vehicle_label: string;
   registration_plate: string;
@@ -399,18 +396,25 @@ export type UpdateReservationContractInput = {
   end_date: string;
   start_time: string;
   end_time: string;
+  lieu_livraison_depart: string;
+  lieu_livraison_retour: string;
+  retour_prevu_le: string | null;
+  prolongation: string;
 
   mileage_start: number | null;
   mileage_end: number | null;
   damages: DamageEntry[];
   equipment: EquipmentChecklist;
+  fuel_type: string;
+  fuel_level_out: number | null;
+  fuel_level_in: number | null;
   delivery_fee: number;
   pickup_fee: number;
 
   fait_a: string;
-  override_total_ht: number | null;
-  override_tva: number | null;
   override_total_ttc: number | null;
+  avance: number;
+  reste_a_payer: number;
 };
 
 export async function updateReservationContract(
@@ -419,22 +423,29 @@ export async function updateReservationContract(
 ): Promise<Reservation> {
   const rows = await sql<Reservation[]>`
     UPDATE reservations
-    SET full_name = ${data.full_name},
-        age = ${data.age},
+    SET prenom = ${data.prenom},
+        nom = ${data.nom},
+        date_naissance = ${data.date_naissance},
         cin_number = ${data.cin_number},
+        cin_delivered_le = ${data.cin_delivered_le},
         license_issue_date = ${data.license_issue_date},
         driver_address = ${data.driver_address},
         driver_phone = ${data.driver_phone},
         driver_license_number = ${data.driver_license_number},
         driver_passport_number = ${data.driver_passport_number},
+        passport_delivered_le = ${data.passport_delivered_le},
 
         has_second_driver = ${data.has_second_driver},
-        second_driver_full_name = ${data.second_driver_full_name},
+        second_driver_prenom = ${data.second_driver_prenom},
+        second_driver_nom = ${data.second_driver_nom},
+        second_driver_date_naissance = ${data.second_driver_date_naissance},
         second_driver_address = ${data.second_driver_address},
         second_driver_phone = ${data.second_driver_phone},
         second_driver_cin_number = ${data.second_driver_cin_number},
+        second_driver_cin_delivered_le = ${data.second_driver_cin_delivered_le},
         second_driver_license_number = ${data.second_driver_license_number},
         second_driver_passport_number = ${data.second_driver_passport_number},
+        second_driver_passport_delivered_le = ${data.second_driver_passport_delivered_le},
 
         vehicle_label = ${data.vehicle_label},
         registration_plate = ${data.registration_plate},
@@ -443,28 +454,46 @@ export async function updateReservationContract(
         end_date = ${data.end_date},
         start_time = ${data.start_time},
         end_time = ${data.end_time},
+        lieu_livraison_depart = ${data.lieu_livraison_depart},
+        lieu_livraison_retour = ${data.lieu_livraison_retour},
+        retour_prevu_le = ${data.retour_prevu_le},
+        prolongation = ${data.prolongation},
 
         mileage_start = ${data.mileage_start},
         mileage_end = ${data.mileage_end},
         damages = ${sql.json(data.damages)},
         equipment = ${sql.json(data.equipment)},
+        fuel_type = ${data.fuel_type},
+        fuel_level_out = ${data.fuel_level_out},
+        fuel_level_in = ${data.fuel_level_in},
         delivery_fee = ${data.delivery_fee},
         pickup_fee = ${data.pickup_fee},
 
         fait_a = ${data.fait_a},
-        override_total_ht = ${data.override_total_ht},
-        override_tva = ${data.override_tva},
-        override_total_ttc = ${data.override_total_ttc}
+        override_total_ttc = ${data.override_total_ttc},
+        avance = ${data.avance},
+        reste_a_payer = ${data.reste_a_payer}
     WHERE id = ${id}
     RETURNING *
   `;
   return rows[0];
 }
 
-// Feature 4 - remote signing. The admin generates a single-use, expiring
-// link; the client signs on a public page; the signature (PNG data URL),
-// typed name, IP and timestamp land on the reservation and are rendered
-// in the contract PDF.
+export async function recordAdminSignature(
+  id: number,
+  data: { admin_signer_name: string; admin_signature_data: string }
+): Promise<Reservation> {
+  const rows = await sql<Reservation[]>`
+    UPDATE reservations
+    SET admin_signer_name = ${data.admin_signer_name},
+        admin_signature_data = ${data.admin_signature_data},
+        admin_signed_at = now()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return rows[0];
+}
+
 export async function createSigningToken(id: number): Promise<string | null> {
   const token = randomUUID();
   const rows = await sql<{ signing_token: string }[]>`
@@ -478,13 +507,9 @@ export async function createSigningToken(id: number): Promise<string | null> {
 }
 
 export async function getReservationBySigningToken(token: string): Promise<Reservation | null> {
-  // Guard garbage tokens that Postgres would reject as invalid UUIDs.
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
     return null;
   }
-  // A link may belong to either the main driver's token or the second
-  // driver's token — check both, the UUID space makes a collision between
-  // the two columns astronomically unlikely.
   const rows = await sql<Reservation[]>`
     SELECT * FROM reservations
     WHERE signing_token = ${token} OR signing_token_2 = ${token}
@@ -493,15 +518,10 @@ export async function getReservationBySigningToken(token: string): Promise<Reser
   return rows[0] ?? null;
 }
 
-// True if `token` is this reservation's second-driver link rather than the
-// main driver's — the sign page and submit action use this to know which
-// columns to read/write into.
 export function isSecondDriverToken(reservation: Reservation, token: string): boolean {
   return reservation.signing_token_2 === token;
 }
 
-// Consumes the token exactly once: the UPDATE only matches while the
-// token is unused, unexpired and the reservation is not cancelled.
 export async function consumeSigningToken(
   token: string,
   data: { signer_name: string; signer_ip: string; signature_data: string }
@@ -522,8 +542,6 @@ export async function consumeSigningToken(
   `;
   return rows.length === 1;
 }
-
-// ---- Second driver's independent signing slot ----
 
 export async function createSigningToken2(id: number): Promise<string | null> {
   const token = randomUUID();
@@ -558,9 +576,6 @@ export async function consumeSigningToken2(
   return rows.length === 1;
 }
 
-// ---- Persistent rate limiting / IP bans ----
-// One small table (login_attempts); keys: login:<ip>, sign:<ip>, res:<ip>.
-
 export async function getLockExpiry(key: string): Promise<Date | null> {
   const rows = await sql<{ locked_until: Date }[]>`
     SELECT locked_until FROM login_attempts
@@ -583,7 +598,6 @@ export async function recordFailedAttempt(
   opts: { maxAttempts: number; banMs: number }
 ): Promise<void> {
   const { maxAttempts, banMs } = opts;
-  // Count failures only while the key is not already locked.
   if (!(await isKeyActive(key))) return;
 
   await sql`
@@ -592,7 +606,6 @@ export async function recordFailedAttempt(
     ON CONFLICT (ip) DO UPDATE SET count = login_attempts.count + 1
   `;
 
-  // At the threshold, ban for banMs and reset the counter.
   await sql`
     UPDATE login_attempts
     SET count = 0,
@@ -605,7 +618,6 @@ export async function clearFailures(key: string): Promise<void> {
   await sql`DELETE FROM login_attempts WHERE ip = ${key}`;
 }
 
-// Fixed-window budget; returns true while the key stays within max.
 export async function consumeWindowedLimit(
   key: string,
   max: number,
