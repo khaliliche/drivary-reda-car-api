@@ -103,18 +103,36 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 const STORAGE_BUCKET = "vehicles";
 
+// Verify the real file type from magic bytes — the declared MIME type is client-controlled.
+async function sniffImageType(file: File): Promise<string | null> {
+  const b = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (
+    b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && // RIFF
+    b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50    // WEBP
+  ) return "image/webp";
+  return null;
+}
+
 async function uploadIfPresent(formData: FormData): Promise<string | null> {
   const file = formData.get("image") as File | null;
   if (!file || file.size === 0) return null;
 
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error(
-      `Type de fichier non autorisÃ© : ${file.type || "inconnu"}. Formats acceptÃ©s : JPEG, PNG, WEBP, GIF.`
+      `Type de fichier non autorisé : ${file.type || "inconnu"}. Formats acceptÃ©s : JPEG, PNG, WEBP, GIF.`
     );
   }
 
+  const sniffed = await sniffImageType(file);
+  if (!sniffed) {
+    throw new Error("Le contenu du fichier ne correspond pas a une image valide (JPEG, PNG, WEBP, GIF).");
+  }
+
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Le fichier dÃ©passe la taille maximale autorisÃ©e (5 Mo).");
+    throw new Error("Le fichier dépasse la taille maximale autorisée (5 Mo).");
   }
 
   const safeName = file.name
@@ -131,7 +149,7 @@ const fileName = `${Date.now()}-${safeName}`;
     });
 
   if (error) {
-    throw new Error(`Ã‰chec de l'upload : ${error.message}`);
+    throw new Error(`Échec de l'upload : ${error.message}`);
   }
 
   const { data } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
@@ -173,13 +191,32 @@ export async function updateVehicleAction(id: number, formData: FormData) {
     image_url: uploadedUrl ?? existingUrl,
   });
 
+  if (uploadedUrl && existingUrl && uploadedUrl !== existingUrl) {
+    await removeStorageObject(existingUrl); // drop the replaced image
+  }
+
   revalidateAll();
   redirect("/admin/real");
 }
 
+async function removeStorageObject(publicUrl: string | null | undefined) {
+  if (!publicUrl) return;
+  try {
+    const marker = `/object/public/${STORAGE_BUCKET}/`;
+    const idx = publicUrl.indexOf(marker);
+    if (idx === -1) return; // not one of ours (e.g. external URL) — leave it alone
+    const path = publicUrl.slice(idx + marker.length);
+    await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]);
+  } catch {
+    // Never block the DB operation if storage cleanup fails.
+  }
+}
+
 export async function deleteVehicleAction(id: number) {
   await requireAdmin();
+  const vehicle = await getVehicleById(id);
   await deleteVehicle(id);
+  await removeStorageObject(vehicle?.image_url);
   revalidateAll();
 }
 

@@ -28,7 +28,10 @@ export async function getExpectedSessionToken(): Promise<string | null> {
 
   if (!password || !secret) return null;
 
-  return sha256Hex(`${password}:${secret}`);
+  // Daily rotation bucket: the expected token changes every UTC day, so a
+  // stolen cookie stops working within 24h even if env vars never change.
+  const dayBucket = Math.floor(Date.now() / 86400000);
+  return sha256Hex(`${password}:${secret}:${dayBucket}`);
 }
 
 export async function checkPassword(submitted: string): Promise<boolean> {

@@ -1,22 +1,32 @@
+
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
-import { getReservationById, getVehicleById, type ReservationStatus } from "@/lib/db";
+import {
+  getReservationById,
+  getVehicleById,
+  type ReservationStatus,
+} from "@/lib/db";
 import {
   updateReservationStatusAction,
   updateReservationHandoverAction,
   deleteReservationAction,
 } from "@/app/admin/real/actions";
-import { resolveBilling, getFullName, calculateAge, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
+import {
+  resolveBilling,
+  getFullName,
+  calculateAge,
+  DEFAULT_MIN_RENTAL_DAYS,
+} from "@/lib/contract";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import HandoverForm from "@/components/admin/HandoverForm";
 import SendSigningLinkButton from "@/components/admin/SendSigningLinkButton";
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
   pending: "En attente",
-  contacted: "ContactÃ©e",
-  confirmed: "ConfirmÃ©e",
-  cancelled: "AnnulÃ©e",
+  contacted: "Contactée",
+  confirmed: "Confirmée",
+  cancelled: "Annulée",
 };
 
 const STATUS_OPTIONS: ReservationStatus[] = [
@@ -34,7 +44,13 @@ function formatDate(value: string | Date) {
   });
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex flex-col">
       <dt className="text-xs text-black/40">{label}</dt>
@@ -52,6 +68,7 @@ export default async function AdminReservationDetailPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
+
   const reservation = await getReservationById(Number(id));
 
   if (!reservation) {
@@ -85,13 +102,13 @@ export default async function AdminReservationDetailPage({
             className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-black/50 transition-colors hover:text-black/80"
           >
             <ArrowLeft className="h-4 w-4" />
-            RÃ©servations
+            Réservations
           </Link>
 
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl font-extrabold text-[var(--color-ink)]">
-                RÃ©servation #{reservation.id} â€” {getFullName(reservation)}
+                Réservation #{reservation.id} — {getFullName(reservation)}
               </h1>
 
               {reservation.contract_number && (
@@ -108,37 +125,37 @@ export default async function AdminReservationDetailPage({
 
           {error === "conflict" && (
             <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              Impossible de confirmer : ce vÃ©hicule a dÃ©jÃ  une rÃ©servation
-              confirmÃ©e qui chevauche ces dates.
+              Impossible de confirmer : ce véhicule a déjà une réservation
+              confirmée qui chevauche ces dates.
             </p>
           )}
 
           {error === "notFound" && (
             <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              RÃ©servation ou vÃ©hicule introuvable.
+              Réservation ou véhicule introuvable.
             </p>
           )}
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {STATUS_OPTIONS.filter((s) => s !== reservation.status).map(
-              (status) => (
-                <form
-                  key={status}
-                  action={updateReservationStatusAction.bind(
-                    null,
-                    reservation.id,
-                    status
-                  )}
+            {STATUS_OPTIONS.filter(
+              (status) => status !== reservation.status
+            ).map((status) => (
+              <form
+                key={status}
+                action={updateReservationStatusAction.bind(
+                  null,
+                  reservation.id,
+                  status
+                )}
+              >
+                <button
+                  type="submit"
+                  className="rounded-lg border border-black/15 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5"
                 >
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-black/15 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5"
-                  >
-                    Marquer {STATUS_LABELS[status]}
-                  </button>
-                </form>
-              )
-            )}
+                  Marquer {STATUS_LABELS[status]}
+                </button>
+              </form>
+            ))}
 
             {reservation.contract_number ? (
               <a
@@ -148,17 +165,17 @@ export default async function AdminReservationDetailPage({
                 className="flex items-center gap-1.5 rounded-lg border border-black/15 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5"
               >
                 <FileText className="h-3.5 w-3.5" />
-                Voir / rÃ©imprimer le contrat
+                Voir / réimprimer le contrat
               </a>
             ) : (
               <button
                 type="button"
                 disabled
-                title="Confirmez la rÃ©servation pour gÃ©nÃ©rer le contrat"
+                title="Confirmez la réservation pour générer le contrat"
                 className="flex items-center gap-1.5 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/30"
               >
                 <FileText className="h-3.5 w-3.5" />
-                GÃ©nÃ©rer le contrat
+                Générer le contrat
               </button>
             )}
 
@@ -172,8 +189,8 @@ export default async function AdminReservationDetailPage({
             <SendSigningLinkButton
               reservationId={reservation.id}
               signedAt={reservation.signed_at}
-            isWalkIn={reservation.source === "walk_in"}
-              />
+              isWalkIn={reservation.source === "walk_in"}
+            />
 
             {reservation.has_second_driver && (
               <SendSigningLinkButton
@@ -181,8 +198,8 @@ export default async function AdminReservationDetailPage({
                 signedAt={reservation.signed_2_at}
                 driver="second"
                 label="Envoyer au 2e conducteur"
-              isWalkIn={reservation.source === "walk_in"}
-                />
+                isWalkIn={reservation.source === "walk_in"}
+              />
             )}
 
             {reservation.signed_at &&
@@ -195,9 +212,13 @@ export default async function AdminReservationDetailPage({
                   Contresigner
                 </a>
               )}
+
             {reservation.admin_signed_at && (
               <span className="text-xs font-semibold text-emerald-700">
-                Agence signe le {new Date(reservation.admin_signed_at).toLocaleString("fr-FR")}
+                Agence signe le{" "}
+                {new Date(reservation.admin_signed_at).toLocaleString(
+                  "fr-FR"
+                )}
               </span>
             )}
           </div>
@@ -209,28 +230,44 @@ export default async function AdminReservationDetailPage({
               </h2>
 
               <dl className="mt-3 flex flex-col gap-2 text-sm">
-                <Row label="Nom" value={getFullName(reservation)} />
-                <Row label="Ã‚ge" value={`${calculateAge(reservation.date_naissance)} ans`} />
-                <Row label="CIN" value={reservation.cin_number} />
                 <Row
-                  label="Permis NÂ°"
-                  value={reservation.driver_license_number || "â€”"}
+                  label="Nom"
+                  value={getFullName(reservation)}
                 />
+
+                <Row
+                  label="Âge"
+                  value={`${calculateAge(reservation.date_naissance)} ans`}
+                />
+
+                <Row
+                  label="CIN"
+                  value={reservation.cin_number}
+                />
+
+                <Row
+                  label="Permis N°"
+                  value={reservation.driver_license_number || "—"}
+                />
+
                 <Row
                   label="Permis obtenu le"
                   value={formatDate(reservation.license_issue_date)}
                 />
+
                 <Row
-                  label="Passeport NÂ°"
-                  value={reservation.driver_passport_number || "â€”"}
+                  label="Passeport N°"
+                  value={reservation.driver_passport_number || "—"}
                 />
+
                 <Row
                   label="Adresse"
-                  value={reservation.driver_address || "â€”"}
+                  value={reservation.driver_address || "—"}
                 />
+
                 <Row
-                  label="TÃ©lÃ©phone"
-                  value={reservation.driver_phone || "â€”"}
+                  label="Téléphone"
+                  value={reservation.driver_phone || "—"}
                 />
               </dl>
             </section>
@@ -248,28 +285,37 @@ export default async function AdminReservationDetailPage({
                       getFullName({
                         prenom: reservation.second_driver_prenom,
                         nom: reservation.second_driver_nom,
-                      }) || "â€”"
+                      }) || "—"
                     }
                   />
+
                   <Row
                     label="CIN"
-                    value={reservation.second_driver_cin_number || "â€”"}
+                    value={reservation.second_driver_cin_number || "—"}
                   />
+
                   <Row
-                    label="Permis NÂ°"
-                    value={reservation.second_driver_license_number || "â€”"}
+                    label="Permis N°"
+                    value={
+                      reservation.second_driver_license_number || "—"
+                    }
                   />
+
                   <Row
-                    label="Passeport NÂ°"
-                    value={reservation.second_driver_passport_number || "â€”"}
+                    label="Passeport N°"
+                    value={
+                      reservation.second_driver_passport_number || "—"
+                    }
                   />
+
                   <Row
                     label="Adresse"
-                    value={reservation.second_driver_address || "â€”"}
+                    value={reservation.second_driver_address || "—"}
                   />
+
                   <Row
-                    label="TÃ©lÃ©phone"
-                    value={reservation.second_driver_phone || "â€”"}
+                    label="Téléphone"
+                    value={reservation.second_driver_phone || "—"}
                   />
                 </dl>
               ) : (
@@ -282,12 +328,12 @@ export default async function AdminReservationDetailPage({
 
           <section className="mt-6 rounded-2xl border border-black/10 bg-white p-5">
             <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
-              VÃ©hicule &amp; pÃ©riode
+              Véhicule &amp; période
             </h2>
 
             <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <Row
-                label="VÃ©hicule"
+                label="Véhicule"
                 value={reservation.vehicle_label}
               />
 
@@ -296,39 +342,45 @@ export default async function AdminReservationDetailPage({
                 value={
                   vehicle
                     ? `${vehicle.price_per_day} DH`
-                    : "VÃ©hicule supprimÃ©"
+                    : "Véhicule supprimé"
                 }
               />
 
               <Row
-                label="DÃ©part"
-                value={`${formatDate(reservation.start_date)} Ã  ${reservation.start_time}`}
+                label="Départ"
+                value={`${formatDate(reservation.start_date)} à ${reservation.start_time}`}
               />
 
               <Row
                 label="Retour"
-                value={`${formatDate(reservation.end_date)} Ã  ${reservation.end_time}`}
+                value={`${formatDate(reservation.end_date)} à ${reservation.end_time}`}
               />
             </dl>
           </section>
 
           <section className="mt-6 rounded-2xl border border-black/10 bg-white p-5">
             <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
-              Facturation (estimÃ©e)
+              Facturation (estimée)
             </h2>
 
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-              <Row label="Jours" value={`${billing.days}`} />
+              <Row
+                label="Jours"
+                value={`${billing.days}`}
+              />
+
               <Row
                 label="Total TTC"
                 value={`${billing.totalTTC.toFixed(2)} DH`}
               />
+
               <Row
                 label="Avance"
                 value={`${billing.avance.toFixed(2)} DH`}
               />
+
               <Row
-                label="Reste Ã  payer"
+                label="Reste à payer"
                 value={`${billing.resteAPayer.toFixed(2)} DH`}
               />
             </dl>
@@ -336,7 +388,7 @@ export default async function AdminReservationDetailPage({
 
           <section className="mt-6 rounded-2xl border border-black/10 bg-white p-5">
             <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
-              ComplÃ©tion remise du vÃ©hicule
+              Complétion remise du véhicule
             </h2>
 
             <div className="mt-4">
@@ -362,12 +414,17 @@ export default async function AdminReservationDetailPage({
           </section>
 
           <div className="mt-6">
-            <form action={deleteReservationAction.bind(null, reservation.id)}>
+            <form
+              action={deleteReservationAction.bind(
+                null,
+                reservation.id
+              )}
+            >
               <button
                 type="submit"
                 className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
               >
-                Supprimer la rÃ©servation
+                Supprimer la réservation
               </button>
             </form>
           </div>

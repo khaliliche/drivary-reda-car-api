@@ -1,8 +1,25 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { getTieredPricing } from "./pricing";
 
-export const sql = postgres(process.env.DATABASE_URL!, { ssl: "require" });
+function requireDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set. Create .env.local with DATABASE_URL=postgres://..."
+    );
+  }
+  return url;
+}
+
+// DATABASE_SSL=false disables SSL for local/non-SSL databases. Default: require.
+function resolveSsl(): boolean | "require" {
+  const v = process.env.DATABASE_SSL?.trim().toLowerCase();
+  if (v === "false" || v === "0" || v === "off") return false;
+  return "require";
+}
+
+export const sql = postgres(requireDatabaseUrl(), { ssl: resolveSsl() });
 
 export type Vehicle = {
   id: number;
