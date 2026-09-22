@@ -1,5 +1,0 @@
-﻿CREATE TABLE IF NOT EXISTS login_attempts (
-  ip TEXT PRIMARY KEY,
-  count INTEGER NOT NULL DEFAULT 0,
-  locked_until TIMESTAMPTZ
-);

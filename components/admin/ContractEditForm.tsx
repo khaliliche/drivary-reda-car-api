@@ -1,11 +1,9 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { DAMAGE_ZONES, DAMAGE_TYPES, EQUIPMENT_ITEMS } from "@/lib/contract";
+import { DAMAGE_ZONES, DAMAGE_TYPES, EQUIPMENT_ITEMS, FUEL_TYPES, FUEL_LEVELS } from "@/lib/contract";
 import type { DamageEntry, EquipmentChecklist } from "@/lib/db";
 
-// postgres.js returns DATE columns as JS Date objects (not strings), so
-// values coming from the DB can be either depending on the query path.
 function toDateInputValue(value: string | Date | null | undefined) {
   if (!value) return "";
   const date = value instanceof Date ? value : new Date(value);
@@ -14,22 +12,29 @@ function toDateInputValue(value: string | Date | null | undefined) {
 }
 
 type Initial = {
-  full_name: string;
-  age: number;
+  prenom: string;
+  nom: string;
+  date_naissance: string;
   cin_number: string;
+  cin_delivered_le: string | null;
   license_issue_date: string;
   driver_address: string;
   driver_phone: string;
   driver_license_number: string;
   driver_passport_number: string;
+  passport_delivered_le: string | null;
 
   has_second_driver: boolean;
-  second_driver_full_name: string;
+  second_driver_prenom: string;
+  second_driver_nom: string;
+  second_driver_date_naissance: string | null;
   second_driver_address: string;
   second_driver_phone: string;
   second_driver_cin_number: string;
+  second_driver_cin_delivered_le: string | null;
   second_driver_license_number: string;
   second_driver_passport_number: string;
+  second_driver_passport_delivered_le: string | null;
 
   vehicle_label: string;
   registration_plate: string;
@@ -38,24 +43,29 @@ type Initial = {
   end_date: string;
   start_time: string;
   end_time: string;
+  lieu_livraison_depart: string;
+  lieu_livraison_retour: string;
+  retour_prevu_le: string | null;
+  prolongation: string;
 
   mileage_start: number | null;
   mileage_end: number | null;
   damages: DamageEntry[];
   equipment: EquipmentChecklist;
+  fuel_type: string;
+  fuel_level_out: number | null;
+  fuel_level_in: number | null;
   delivery_fee: number;
   pickup_fee: number;
 
   fait_a: string;
-  override_total_ht: number | null;
-  override_tva: number | null;
   override_total_ttc: number | null;
+  avance: number;
 };
 
 type Calculated = {
-  totalHT: number;
-  tva: number;
   totalTTC: number;
+  resteAPayer: number;
 };
 
 export default function ContractEditForm({
@@ -69,6 +79,9 @@ export default function ContractEditForm({
 }) {
   const [hasSecondDriver, setHasSecondDriver] = useState(initial.has_second_driver);
   const [damages, setDamages] = useState<DamageEntry[]>(initial.damages);
+  const [fuelType, setFuelType] = useState(initial.fuel_type || FUEL_TYPES[0].value);
+  const [fuelOut, setFuelOut] = useState<number | null>(initial.fuel_level_out);
+  const [fuelIn, setFuelIn] = useState<number | null>(initial.fuel_level_in);
 
   function addDamage() {
     setDamages((d) => [...d, { zone: DAMAGE_ZONES[0], type: DAMAGE_TYPES[0].value, note: "" }]);
@@ -80,6 +93,12 @@ export default function ContractEditForm({
     setDamages((d) => d.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
   }
 
+  function fuelLabel(level: number) {
+    if (level === 0) return "0";
+    if (level === 1) return "1";
+    return `${level * 4}/4`;
+  }
+
   const inputClass = "rounded-lg border border-black/15 px-3 py-2 text-sm";
   const labelClass = "flex flex-col gap-1";
   const spanClass = "text-sm font-semibold";
@@ -87,24 +106,34 @@ export default function ContractEditForm({
   return (
     <form action={action} className="flex flex-col gap-8">
       <input type="hidden" name="damages_json" value={JSON.stringify(damages)} readOnly />
+      <input type="hidden" name="fuel_type" value={fuelType} readOnly />
+      <input type="hidden" name="fuel_level_out" value={fuelOut ?? ""} readOnly />
+      <input type="hidden" name="fuel_level_in" value={fuelIn ?? ""} readOnly />
 
-      {/* ---- Conducteur ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
           Conducteur
         </h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
-            <span className={spanClass}>Nom &amp; Prenom</span>
-            <input type="text" name="full_name" defaultValue={initial.full_name} className={inputClass} required />
+            <span className={spanClass}>Prenom</span>
+            <input type="text" name="prenom" defaultValue={initial.prenom} className={inputClass} required />
           </label>
           <label className={labelClass}>
-            <span className={spanClass}>Age</span>
-            <input type="number" name="age" defaultValue={initial.age} className={inputClass} />
+            <span className={spanClass}>Nom</span>
+            <input type="text" name="nom" defaultValue={initial.nom} className={inputClass} required />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>Date de naissance</span>
+            <input type="date" name="date_naissance" defaultValue={toDateInputValue(initial.date_naissance)} className={inputClass} />
           </label>
           <label className={labelClass}>
             <span className={spanClass}>N&deg; C.I.N</span>
             <input type="text" name="cin_number" defaultValue={initial.cin_number} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>C.I.N delivree le</span>
+            <input type="date" name="cin_delivered_le" defaultValue={toDateInputValue(initial.cin_delivered_le)} className={inputClass} />
           </label>
           <label className={labelClass}>
             <span className={spanClass}>Permis obtenu le</span>
@@ -119,6 +148,10 @@ export default function ContractEditForm({
             <input type="text" name="driver_passport_number" defaultValue={initial.driver_passport_number} className={inputClass} />
           </label>
           <label className={labelClass}>
+            <span className={spanClass}>Passeport delivre le</span>
+            <input type="date" name="passport_delivered_le" defaultValue={toDateInputValue(initial.passport_delivered_le)} className={inputClass} />
+          </label>
+          <label className={labelClass}>
             <span className={spanClass}>Adresse</span>
             <input type="text" name="driver_address" defaultValue={initial.driver_address} className={inputClass} />
           </label>
@@ -129,7 +162,6 @@ export default function ContractEditForm({
         </div>
       </section>
 
-      {/* ---- Autre conducteur ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
@@ -149,12 +181,24 @@ export default function ContractEditForm({
         {hasSecondDriver && (
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className={labelClass}>
-              <span className={spanClass}>Nom &amp; Prenom</span>
-              <input type="text" name="second_driver_full_name" defaultValue={initial.second_driver_full_name} className={inputClass} />
+              <span className={spanClass}>Prenom</span>
+              <input type="text" name="second_driver_prenom" defaultValue={initial.second_driver_prenom} className={inputClass} />
+            </label>
+            <label className={labelClass}>
+              <span className={spanClass}>Nom</span>
+              <input type="text" name="second_driver_nom" defaultValue={initial.second_driver_nom} className={inputClass} />
+            </label>
+            <label className={labelClass}>
+              <span className={spanClass}>Date de naissance</span>
+              <input type="date" name="second_driver_date_naissance" defaultValue={toDateInputValue(initial.second_driver_date_naissance)} className={inputClass} />
             </label>
             <label className={labelClass}>
               <span className={spanClass}>N&deg; C.I.N</span>
               <input type="text" name="second_driver_cin_number" defaultValue={initial.second_driver_cin_number} className={inputClass} />
+            </label>
+            <label className={labelClass}>
+              <span className={spanClass}>C.I.N delivree le</span>
+              <input type="date" name="second_driver_cin_delivered_le" defaultValue={toDateInputValue(initial.second_driver_cin_delivered_le)} className={inputClass} />
             </label>
             <label className={labelClass}>
               <span className={spanClass}>N&deg; permis</span>
@@ -163,6 +207,10 @@ export default function ContractEditForm({
             <label className={labelClass}>
               <span className={spanClass}>N&deg; passeport</span>
               <input type="text" name="second_driver_passport_number" defaultValue={initial.second_driver_passport_number} className={inputClass} />
+            </label>
+            <label className={labelClass}>
+              <span className={spanClass}>Passeport delivre le</span>
+              <input type="date" name="second_driver_passport_delivered_le" defaultValue={toDateInputValue(initial.second_driver_passport_delivered_le)} className={inputClass} />
             </label>
             <label className={labelClass}>
               <span className={spanClass}>Adresse</span>
@@ -176,7 +224,6 @@ export default function ContractEditForm({
         )}
       </section>
 
-      {/* ---- Vehicule & periode ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
           Vehicule &amp; periode
@@ -207,6 +254,22 @@ export default function ContractEditForm({
             <input type="time" name="end_time" defaultValue={initial.end_time} className={inputClass} />
           </label>
           <label className={labelClass}>
+            <span className={spanClass}>Lieu de livraison (depart)</span>
+            <input type="text" name="lieu_livraison_depart" defaultValue={initial.lieu_livraison_depart} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>Lieu de livraison (retour)</span>
+            <input type="text" name="lieu_livraison_retour" defaultValue={initial.lieu_livraison_retour} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>Retour prevu le</span>
+            <input type="date" name="retour_prevu_le" defaultValue={toDateInputValue(initial.retour_prevu_le)} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>Prolongation</span>
+            <input type="text" name="prolongation" defaultValue={initial.prolongation} className={inputClass} />
+          </label>
+          <label className={labelClass}>
             <span className={spanClass}>Km depart</span>
             <input type="number" name="mileage_start" defaultValue={initial.mileage_start ?? ""} className={inputClass} />
           </label>
@@ -215,9 +278,62 @@ export default function ContractEditForm({
             <input type="number" name="mileage_end" defaultValue={initial.mileage_end ?? ""} className={inputClass} />
           </label>
         </div>
+
+        <div className="mt-4">
+          <span className={spanClass}>Carburant</span>
+          <select
+            value={fuelType}
+            onChange={(e) => setFuelType(e.target.value)}
+            className={`mt-1 sm:max-w-xs ${inputClass}`}
+          >
+            {FUEL_TYPES.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <span className={spanClass}>Niveau au depart</span>
+            <div className="mt-2 flex gap-2">
+              {FUEL_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setFuelOut(level)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm ${
+                    fuelOut === level
+                      ? "border-[var(--color-red-primary)] bg-[var(--color-red-primary)] text-white"
+                      : "border-black/15 hover:bg-black/5"
+                  }`}
+                >
+                  {fuelLabel(level)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className={spanClass}>Niveau au retour</span>
+            <div className="mt-2 flex gap-2">
+              {FUEL_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setFuelIn(level)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm ${
+                    fuelIn === level
+                      ? "border-[var(--color-red-primary)] bg-[var(--color-red-primary)] text-white"
+                      : "border-black/15 hover:bg-black/5"
+                  }`}
+                >
+                  {fuelLabel(level)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* ---- Facturation ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
           Facturation
@@ -233,32 +349,21 @@ export default function ContractEditForm({
           </label>
         </div>
 
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className={labelClass}>
+            <span className={spanClass}>Avance (DH)</span>
+            <input type="number" step="0.01" name="avance" defaultValue={initial.avance} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className={spanClass}>Reste a payer (calcule : {calculated.resteAPayer.toFixed(2)} DH)</span>
+            <input type="number" step="0.01" value={calculated.resteAPayer.toFixed(2)} className={inputClass} disabled />
+          </label>
+        </div>
+
         <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-black/40">
-          Override manuel (laisser vide = calcul automatique)
+          Override manuel du Total TTC (laisser vide = calcul automatique)
         </p>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <label className={labelClass}>
-            <span className={spanClass}>Total HT (calcule : {calculated.totalHT.toFixed(2)} DH)</span>
-            <input
-              type="number"
-              step="0.01"
-              name="override_total_ht"
-              defaultValue={initial.override_total_ht ?? ""}
-              placeholder={calculated.totalHT.toFixed(2)}
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            <span className={spanClass}>TVA 20% (calcule : {calculated.tva.toFixed(2)} DH)</span>
-            <input
-              type="number"
-              step="0.01"
-              name="override_tva"
-              defaultValue={initial.override_tva ?? ""}
-              placeholder={calculated.tva.toFixed(2)}
-              className={inputClass}
-            />
-          </label>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:max-w-xs">
           <label className={labelClass}>
             <span className={spanClass}>Total TTC (calcule : {calculated.totalTTC.toFixed(2)} DH)</span>
             <input
@@ -273,7 +378,6 @@ export default function ContractEditForm({
         </div>
       </section>
 
-      {/* ---- Dommages ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
@@ -306,7 +410,6 @@ export default function ContractEditForm({
         </div>
       </section>
 
-      {/* ---- Equipement ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
           Equipement du vehicule
@@ -326,7 +429,6 @@ export default function ContractEditForm({
         </div>
       </section>
 
-      {/* ---- Validation ---- */}
       <section className="rounded-2xl border border-black/10 bg-white p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wide text-black/50">
           Validation du contrat

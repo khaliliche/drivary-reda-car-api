@@ -1,4 +1,4 @@
-﻿-- Full schema for Drivary Reda Car — fresh database, no legacy data to preserve.
+-- Full schema for Drivary Reda Car — fresh database, no legacy data to preserve.
 
 DROP TABLE IF EXISTS reservations;
 DROP TABLE IF EXISTS vehicles;

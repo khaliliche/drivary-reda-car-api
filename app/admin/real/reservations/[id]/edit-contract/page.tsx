@@ -33,7 +33,10 @@ export default async function EditContractPage({
       vehicle?.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS,
   };
 
-  const billing = resolveBilling(vehiclePricing, reservation);
+  const billing = resolveBilling(vehiclePricing, {
+    ...reservation,
+    avance: reservation.avance,
+  });
 
   return (
     <div className="min-h-screen bg-[var(--color-mist)]/40 lg:flex">
@@ -61,51 +64,65 @@ export default async function EditContractPage({
                 reservation.id
               )}
               initial={{
-                full_name: reservation.full_name,
-                age: reservation.age,
+                prenom: reservation.prenom,
+                nom: reservation.nom,
+                date_naissance: reservation.date_naissance,
                 cin_number: reservation.cin_number,
+                cin_delivered_le: reservation.cin_delivered_le,
                 license_issue_date: reservation.license_issue_date,
                 driver_address: reservation.driver_address,
                 driver_phone: reservation.driver_phone,
                 driver_license_number: reservation.driver_license_number,
                 driver_passport_number: reservation.driver_passport_number,
+                passport_delivered_le: reservation.passport_delivered_le,
+
                 has_second_driver: reservation.has_second_driver,
-                second_driver_full_name:
-                  reservation.second_driver_full_name,
-                second_driver_address:
-                  reservation.second_driver_address,
-                second_driver_phone:
-                  reservation.second_driver_phone,
+                second_driver_prenom: reservation.second_driver_prenom,
+                second_driver_nom: reservation.second_driver_nom,
+                second_driver_date_naissance:
+                  reservation.second_driver_date_naissance,
+                second_driver_address: reservation.second_driver_address,
+                second_driver_phone: reservation.second_driver_phone,
                 second_driver_cin_number:
                   reservation.second_driver_cin_number,
+                second_driver_cin_delivered_le:
+                  reservation.second_driver_cin_delivered_le,
                 second_driver_license_number:
                   reservation.second_driver_license_number,
                 second_driver_passport_number:
                   reservation.second_driver_passport_number,
+                second_driver_passport_delivered_le:
+                  reservation.second_driver_passport_delivered_le,
+
                 vehicle_label: reservation.vehicle_label,
-                registration_plate:
-                  reservation.registration_plate,
+                registration_plate: reservation.registration_plate,
+
                 start_date: reservation.start_date,
                 end_date: reservation.end_date,
                 start_time: reservation.start_time,
                 end_time: reservation.end_time,
+                lieu_livraison_depart: reservation.lieu_livraison_depart,
+                lieu_livraison_retour: reservation.lieu_livraison_retour,
+                retour_prevu_le: reservation.retour_prevu_le,
+                prolongation: reservation.prolongation,
+
                 mileage_start: reservation.mileage_start,
                 mileage_end: reservation.mileage_end,
                 damages: reservation.damages,
                 equipment: reservation.equipment,
+                fuel_type: reservation.fuel_type,
+                fuel_level_out: reservation.fuel_level_out,
+                fuel_level_in: reservation.fuel_level_in,
                 delivery_fee: Number(reservation.delivery_fee),
                 pickup_fee: Number(reservation.pickup_fee),
+
                 fait_a: reservation.fait_a,
-                override_total_ht:
-                  reservation.override_total_ht,
-                override_tva: reservation.override_tva,
-                override_total_ttc:
-                  reservation.override_total_ttc,
+                override_total_ttc: reservation.override_total_ttc,
+                avance: Number(reservation.avance),
               }}
               calculated={{
-                totalHT: billing.calculatedTotalHT,
-                tva: billing.calculatedTVA,
                 totalTTC: billing.calculatedTotalTTC,
+                resteAPayer: billing.resteAPayer,
               }}
             />
           </div>
@@ -114,4 +131,3 @@ export default async function EditContractPage({
     </div>
   );
 }
-
