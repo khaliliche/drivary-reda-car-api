@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { DAMAGE_ZONES, DAMAGE_TYPES, EQUIPMENT_ITEMS } from "@/lib/contract";
+import { DAMAGE_ZONES, DAMAGE_TYPES, EQUIPMENT_ITEMS, FUEL_TYPES, FUEL_LEVELS } from "@/lib/contract";
 import type { DamageEntry, EquipmentChecklist } from "@/lib/db";
 
 export default function HandoverForm({
@@ -15,11 +15,17 @@ export default function HandoverForm({
     mileage_end: number | null;
     damages: DamageEntry[];
     equipment: EquipmentChecklist;
+    fuel_type: string;
+    fuel_level_out: number | null;
+    fuel_level_in: number | null;
     delivery_fee: number;
     pickup_fee: number;
   };
 }) {
   const [damages, setDamages] = useState<DamageEntry[]>(initial.damages);
+  const [fuelType, setFuelType] = useState(initial.fuel_type || FUEL_TYPES[0].value);
+  const [fuelOut, setFuelOut] = useState<number | null>(initial.fuel_level_out);
+  const [fuelIn, setFuelIn] = useState<number | null>(initial.fuel_level_in);
 
   function addDamage() {
     setDamages((d) => [...d, { zone: DAMAGE_ZONES[0], type: DAMAGE_TYPES[0].value, note: "" }]);
@@ -31,9 +37,18 @@ export default function HandoverForm({
     setDamages((d) => d.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
   }
 
+  function fuelLabel(level: number) {
+    if (level === 0) return "0";
+    if (level === 1) return "1";
+    return `${level * 4}/4`;
+  }
+
   return (
     <form action={action} className="flex flex-col gap-6">
       <input type="hidden" name="damages_json" value={JSON.stringify(damages)} readOnly />
+      <input type="hidden" name="fuel_type" value={fuelType} readOnly />
+      <input type="hidden" name="fuel_level_out" value={fuelOut ?? ""} readOnly />
+      <input type="hidden" name="fuel_level_in" value={fuelIn ?? ""} readOnly />
 
       <label className="flex flex-col gap-1 sm:max-w-xs">
         <span className="text-sm font-semibold">Immatriculation</span>
@@ -64,6 +79,62 @@ export default function HandoverForm({
             className="rounded-lg border border-black/15 px-3 py-2"
           />
         </label>
+      </div>
+
+      <label className="flex flex-col gap-1 sm:max-w-xs">
+        <span className="text-sm font-semibold">Carburant</span>
+        <select
+          value={fuelType}
+          onChange={(e) => setFuelType(e.target.value)}
+          className="rounded-lg border border-black/15 px-3 py-2"
+        >
+          {FUEL_TYPES.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <span className="text-sm font-semibold">Niveau au départ</span>
+          <div className="mt-2 flex gap-2">
+            {FUEL_LEVELS.map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setFuelOut(level)}
+                className={`rounded-lg border px-3 py-1.5 text-sm ${
+                  fuelOut === level
+                    ? "border-[var(--color-red-primary)] bg-[var(--color-red-primary)] text-white"
+                    : "border-black/15 hover:bg-black/5"
+                }`}
+              >
+                {fuelLabel(level)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <span className="text-sm font-semibold">Niveau au retour</span>
+          <div className="mt-2 flex gap-2">
+            {FUEL_LEVELS.map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setFuelIn(level)}
+                className={`rounded-lg border px-3 py-1.5 text-sm ${
+                  fuelIn === level
+                    ? "border-[var(--color-red-primary)] bg-[var(--color-red-primary)] text-white"
+                    : "border-black/15 hover:bg-black/5"
+                }`}
+              >
+                {fuelLabel(level)}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

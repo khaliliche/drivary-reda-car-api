@@ -15,6 +15,7 @@ import {
   createSigningToken2,
   updateReservationHandover,
   updateReservationContract,
+  recordAdminSignature,
   getReservationById,
   type ReservationStatus,
   type DamageEntry,
@@ -33,7 +34,6 @@ import {
 } from "@/lib/auth";
 import { EQUIPMENT_ITEMS } from "@/lib/contract";
 
-// Double-check the session cookie on every admin action, even though middleware guards the path.
 async function requireAdmin() {
   const expectedToken = await getExpectedSessionToken();
 
@@ -48,7 +48,6 @@ export async function loginAction(formData: FormData) {
   const h = await headers();
   const ip = getClientIp(h);
 
-  // Persistent, server-side ban: survives redeploys and cookie deletion.
   const limitKey = `login:${ip}`;
   const rl = await checkFailureLimit(limitKey);
   if (!rl.allowed) {
@@ -213,6 +212,12 @@ export async function updateReservationHandoverAction(id: number, formData: Form
     mileageStartRaw && mileageStartRaw !== "" ? Number(mileageStartRaw) : null;
   const mileageEnd = mileageEndRaw && mileageEndRaw !== "" ? Number(mileageEndRaw) : null;
 
+  const fuelType = String(formData.get("fuel_type") || "");
+  const fuelLevelOutRaw = formData.get("fuel_level_out");
+  const fuelLevelInRaw = formData.get("fuel_level_in");
+  const fuelLevelOut = fuelLevelOutRaw && fuelLevelOutRaw !== "" ? Number(fuelLevelOutRaw) : null;
+  const fuelLevelIn = fuelLevelInRaw && fuelLevelInRaw !== "" ? Number(fuelLevelInRaw) : null;
+
   const deliveryFee = Number(formData.get("delivery_fee") || 0);
   const pickupFee = Number(formData.get("pickup_fee") || 0);
 
@@ -236,6 +241,9 @@ export async function updateReservationHandoverAction(id: number, formData: Form
     mileage_end: mileageEnd,
     damages,
     equipment,
+    fuel_type: fuelType,
+    fuel_level_out: fuelLevelOut,
+    fuel_level_in: fuelLevelIn,
     delivery_fee: deliveryFee,
     pickup_fee: pickupFee,
   });
@@ -244,9 +252,6 @@ export async function updateReservationHandoverAction(id: number, formData: Form
   revalidatePath("/admin/real/reservations");
 }
 
-// Feature 3 — full contract editing. One form, every editable section of
-// the PDF, with an optional manual override for the three billing
-// totals (left blank = keep using the calculated value).
 export async function updateReservationContractAction(
   id: number,
   formData: FormData
@@ -269,6 +274,11 @@ export async function updateReservationContractAction(
     return Number.isFinite(number) ? number : null;
   };
 
+  const dateOrNull = (name: string) => {
+    const value = String(formData.get(name) ?? "").trim();
+    return value === "" ? null : value;
+  };
+
   let damages: DamageEntry[] = [];
 
   try {
@@ -289,29 +299,34 @@ export async function updateReservationContractAction(
       formData.get(`equipment__${item.key}`) === "on";
   }
 
+  const avance = Number(text("avance")) || 0;
+  const overrideTotalTtc = numberOrNull("override_total_ttc");
+
   await updateReservationContract(id, {
-    full_name: text("full_name"),
-    age: Number(text("age")) || 0,
+    prenom: text("prenom"),
+    nom: text("nom"),
+    date_naissance: text("date_naissance"),
     cin_number: text("cin_number"),
+    cin_delivered_le: dateOrNull("cin_delivered_le"),
     license_issue_date: text("license_issue_date"),
     driver_address: text("driver_address"),
     driver_phone: text("driver_phone"),
     driver_license_number: text("driver_license_number"),
     driver_passport_number: text("driver_passport_number"),
+    passport_delivered_le: dateOrNull("passport_delivered_le"),
 
-    has_second_driver:
-      formData.get("has_second_driver") === "on",
+    has_second_driver: formData.get("has_second_driver") === "on",
 
-    second_driver_full_name: text("second_driver_full_name"),
+    second_driver_prenom: text("second_driver_prenom"),
+    second_driver_nom: text("second_driver_nom"),
+    second_driver_date_naissance: dateOrNull("second_driver_date_naissance"),
     second_driver_address: text("second_driver_address"),
     second_driver_phone: text("second_driver_phone"),
     second_driver_cin_number: text("second_driver_cin_number"),
-    second_driver_license_number: text(
-      "second_driver_license_number"
-    ),
-    second_driver_passport_number: text(
-      "second_driver_passport_number"
-    ),
+    second_driver_cin_delivered_le: dateOrNull("second_driver_cin_delivered_le"),
+    second_driver_license_number: text("second_driver_license_number"),
+    second_driver_passport_number: text("second_driver_passport_number"),
+    second_driver_passport_delivered_le: dateOrNull("second_driver_passport_delivered_le"),
 
     vehicle_label: text("vehicle_label"),
     registration_plate: text("registration_plate"),
@@ -320,21 +335,28 @@ export async function updateReservationContractAction(
     end_date: text("end_date"),
     start_time: text("start_time"),
     end_time: text("end_time"),
+    lieu_livraison_depart: text("lieu_livraison_depart"),
+    lieu_livraison_retour: text("lieu_livraison_retour"),
+    retour_prevu_le: dateOrNull("retour_prevu_le"),
+    prolongation: text("prolongation"),
 
     mileage_start: numberOrNull("mileage_start"),
     mileage_end: numberOrNull("mileage_end"),
 
     damages,
     equipment,
+    fuel_type: text("fuel_type"),
+    fuel_level_out: numberOrNull("fuel_level_out"),
+    fuel_level_in: numberOrNull("fuel_level_in"),
 
     delivery_fee: Number(text("delivery_fee")) || 0,
     pickup_fee: Number(text("pickup_fee")) || 0,
 
     fait_a: text("fait_a"),
 
-    override_total_ht: numberOrNull("override_total_ht"),
-    override_tva: numberOrNull("override_tva"),
-    override_total_ttc: numberOrNull("override_total_ttc"),
+    override_total_ttc: overrideTotalTtc,
+    avance,
+    reste_a_payer: overrideTotalTtc != null ? overrideTotalTtc - avance : 0,
   });
 
   revalidatePath(`/admin/real/reservations/${id}`);
@@ -345,10 +367,18 @@ export async function updateReservationContractAction(
 
   redirect(`/admin/real/reservations/${id}`);
 }
-// Builds the client's signing link and a WhatsApp click-to-chat URL that
-// pre-fills the message with the link. Phone accepts local Moroccan
-// format (0612345678) or international (+212...); if it cannot be
-// normalized, waUrl is null and the UI falls back to copying the link.
+
+export async function recordAdminSignatureAction(
+  id: number,
+  data: { admin_signer_name: string; admin_signature_data: string }
+) {
+  await requireAdmin();
+  await recordAdminSignature(id, data);
+
+  revalidatePath(`/admin/real/reservations/${id}`);
+  revalidatePath(`/admin/real/reservations/${id}/contract`);
+}
+
 function normalizePhoneForWa(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (/^00\d{9,15}$/.test(digits)) return digits.slice(2);
@@ -358,7 +388,7 @@ function normalizePhoneForWa(raw: string): string | null {
   return null;
 }
 
-export async function generateSigningLinkAction(id: number): Promise<
+export async function generateSigningLinkAction(id: number): Promise
   | { ok: true; signingUrl: string; waUrl: string | null }
   | { ok: false; error: "notFound" | "cancelled" | "alreadySigned" }
 > {
@@ -377,17 +407,14 @@ export async function generateSigningLinkAction(id: number): Promise<
 
   const phone = normalizePhoneForWa(reservation.driver_phone);
   const message = encodeURIComponent(
-    `Bonjour ${reservation.full_name}, voici votre contrat de location (${reservation.vehicle_label}) a signer : ${signingUrl} - lien valable 7 jours.`
+    `Bonjour ${reservation.prenom} ${reservation.nom}, voici votre contrat de location (${reservation.vehicle_label}) a signer : ${signingUrl} - lien valable 7 jours.`
   );
   const waUrl = phone && origin ? `https://wa.me/${phone}?text=${message}` : null;
 
   return { ok: true, signingUrl, waUrl };
 }
 
-// Same as generateSigningLinkAction but for the SECOND driver: its own
-// token, own link, sent to second_driver_phone — completely independent
-// of the main driver's signature.
-export async function generateSigningLinkAction2(id: number): Promise<
+export async function generateSigningLinkAction2(id: number): Promise
   | { ok: true; signingUrl: string; waUrl: string | null }
   | { ok: false; error: "notFound" | "cancelled" | "alreadySigned" | "noSecondDriver" }
 > {
@@ -407,13 +434,9 @@ export async function generateSigningLinkAction2(id: number): Promise<
 
   const phone = normalizePhoneForWa(reservation.second_driver_phone);
   const message = encodeURIComponent(
-    `Bonjour ${reservation.second_driver_full_name}, voici votre contrat de location (${reservation.vehicle_label}) a signer : ${signingUrl} - lien valable 7 jours.`
+    `Bonjour ${reservation.second_driver_prenom} ${reservation.second_driver_nom}, voici votre contrat de location (${reservation.vehicle_label}) a signer : ${signingUrl} - lien valable 7 jours.`
   );
   const waUrl = phone && origin ? `https://wa.me/${phone}?text=${message}` : null;
 
   return { ok: true, signingUrl, waUrl };
 }
-
-
-
-
