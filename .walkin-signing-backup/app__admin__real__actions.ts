@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { cookies, headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
@@ -109,12 +109,12 @@ async function uploadIfPresent(formData: FormData): Promise<string | null> {
 
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error(
-      `Type de fichier non autorisÃ© : ${file.type || "inconnu"}. Formats acceptÃ©s : JPEG, PNG, WEBP, GIF.`
+      `Type de fichier non autorisé : ${file.type || "inconnu"}. Formats acceptés : JPEG, PNG, WEBP, GIF.`
     );
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Le fichier dÃ©passe la taille maximale autorisÃ©e (5 Mo).");
+    throw new Error("Le fichier dépasse la taille maximale autorisée (5 Mo).");
   }
 
   const safeName = file.name
@@ -131,7 +131,7 @@ const fileName = `${Date.now()}-${safeName}`;
     });
 
   if (error) {
-    throw new Error(`Ã‰chec de l'upload : ${error.message}`);
+    throw new Error(`Échec de l'upload : ${error.message}`);
   }
 
   const { data } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
@@ -432,38 +432,6 @@ export async function recordAdminSignatureAction(
 
   revalidatePath(`/admin/real/reservations/${id}`);
   revalidatePath(`/admin/real/reservations/${id}/contract`);
-}
-
-export type AdminSignatureState = { ok: boolean; error: string };
-
-export async function recordAdminSignatureFormAction(
-  id: number,
-  _prev: AdminSignatureState,
-  formData: FormData
-): Promise<AdminSignatureState> {
-  await requireAdmin();
-
-  const reservation = await getReservationById(id);
-  if (!reservation) return { ok: false, error: "Reservation introuvable." };
-  if (reservation.status === "cancelled") return { ok: false, error: "Reservation annulee." };
-  if (reservation.admin_signed_at) return { ok: false, error: "Deja contresigne." };
-  if (!reservation.signed_at) return { ok: false, error: "Le client n a pas encore signe." };
-
-  const adminSignerName = String(formData.get("admin_signer_name") || "").trim();
-  const signature = String(formData.get("admin_signature_data") || "");
-  if (adminSignerName.length < 2) return { ok: false, error: "Nom requis." };
-  if (!signature.startsWith("data:image/png;base64,")) {
-    return { ok: false, error: "Signature invalide." };
-  }
-
-  await recordAdminSignature(id, {
-    admin_signer_name: adminSignerName,
-    admin_signature_data: signature,
-  });
-
-  revalidatePath(`/admin/real/reservations/${id}`);
-  revalidatePath(`/admin/real/reservations/${id}/contract`);
-  return { ok: true, error: "" };
 }
 
 function normalizePhoneForWa(raw: string): string | null {

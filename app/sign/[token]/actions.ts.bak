@@ -104,10 +104,15 @@ export async function submitSignatureAction(
 
   await resetFailures(limitKey);
 
-  // Walk-in only: the required digital chain is main driver -> agent.
-  // A second driver's own signature (if sent separately) is optional and
-  // never gates or re-triggers the agent countersign step.
-  const readyForCountersign = reservation.source === "walk_in" && !isSecond;
+  // Walk-in only: once every required customer signature is in, send the
+  // same device straight to the admin countersign screen. Online/remote
+  // signers never get this - their browser has no admin session anyway.
+  const mainDone = isSecond ? Boolean(reservation.signed_at) : true;
+  const secondDone = isSecond
+    ? true
+    : !reservation.has_second_driver || Boolean(reservation.signed_2_at);
+  const readyForCountersign =
+    reservation.source === "walk_in" && mainDone && secondDone;
 
   return {
     ok: true,
