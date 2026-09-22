@@ -1,4 +1,5 @@
 import { getReservations } from "@/lib/db";
+import { getFullName, calculateAge } from "@/lib/contract";
 import { Users, Repeat, IdCard } from "lucide-react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
@@ -62,8 +63,8 @@ export default async function AdminClientsPage() {
     } else {
       byCin.set(r.cin_number, {
         cin_number: r.cin_number,
-        full_name: r.full_name,
-        age: r.age,
+        full_name: getFullName(r),
+        age: calculateAge(r.date_naissance),
         license_issue_date: r.license_issue_date,
         bookings: [r],
       });

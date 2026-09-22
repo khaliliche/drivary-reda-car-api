@@ -17,6 +17,8 @@ import {
   updateReservationContract,
   recordAdminSignature,
   getReservationById,
+  getVehicleById,
+  createWalkInReservation,
   type ReservationStatus,
   type DamageEntry,
   type EquipmentChecklist,
@@ -200,6 +202,59 @@ export async function deleteReservationAction(id: number) {
   await requireAdmin();
   await deleteReservation(id);
   revalidatePath("/admin/real/reservations");
+}
+
+export async function createWalkInReservationAction(formData: FormData) {
+  await requireAdmin();
+
+  const vehicleId = Number(formData.get("vehicle_id"));
+  const vehicle = await getVehicleById(vehicleId);
+  if (!vehicle) {
+    throw new Error("Vehicule introuvable.");
+  }
+
+  const startDate = String(formData.get("start_date") || "");
+  const endDate = String(formData.get("end_date") || "");
+  if (!startDate || !endDate || new Date(endDate) <= new Date(startDate)) {
+    throw new Error("La date de retour doit etre apres la date de depart.");
+  }
+
+  const hasSecondDriver = formData.get("has_second_driver") === "on";
+  const text = (name: string) => String(formData.get(name) || "").trim();
+
+  const result = await createWalkInReservation({
+    vehicle_id: vehicle.id,
+    vehicle_label: `${vehicle.brand} ${vehicle.model}`,
+    prenom: text("prenom"),
+    nom: text("nom"),
+    date_naissance: text("date_naissance"),
+    cin_number: text("cin_number"),
+    license_issue_date: text("license_issue_date"),
+    driver_address: text("driver_address"),
+    driver_phone: text("driver_phone"),
+    driver_license_number: text("driver_license_number"),
+    driver_passport_number: text("driver_passport_number"),
+    has_second_driver: hasSecondDriver,
+    second_driver_prenom: hasSecondDriver ? text("second_driver_prenom") : "",
+    second_driver_nom: hasSecondDriver ? text("second_driver_nom") : "",
+    second_driver_address: hasSecondDriver ? text("second_driver_address") : "",
+    second_driver_phone: hasSecondDriver ? text("second_driver_phone") : "",
+    second_driver_cin_number: hasSecondDriver ? text("second_driver_cin_number") : "",
+    second_driver_license_number: hasSecondDriver ? text("second_driver_license_number") : "",
+    second_driver_passport_number: hasSecondDriver ? text("second_driver_passport_number") : "",
+    start_date: startDate,
+    end_date: endDate,
+    start_time: text("start_time") || "10:00",
+    end_time: text("end_time") || "10:00",
+    fait_a: text("fait_a"),
+  });
+
+  if (!result.ok) {
+    throw new Error("Ce vehicule n'est pas disponible sur ces dates.");
+  }
+
+  revalidatePath("/admin/real/reservations");
+  redirect(`/admin/real/reservations/${result.reservation.id}`);
 }
 
 export async function updateReservationHandoverAction(id: number, formData: FormData) {
@@ -388,7 +443,7 @@ function normalizePhoneForWa(raw: string): string | null {
   return null;
 }
 
-export async function generateSigningLinkAction(id: number): Promise
+export async function generateSigningLinkAction(id: number): Promise<
   | { ok: true; signingUrl: string; waUrl: string | null }
   | { ok: false; error: "notFound" | "cancelled" | "alreadySigned" }
 > {
@@ -414,7 +469,7 @@ export async function generateSigningLinkAction(id: number): Promise
   return { ok: true, signingUrl, waUrl };
 }
 
-export async function generateSigningLinkAction2(id: number): Promise
+export async function generateSigningLinkAction2(id: number): Promise<
   | { ok: true; signingUrl: string; waUrl: string | null }
   | { ok: false; error: "notFound" | "cancelled" | "alreadySigned" | "noSecondDriver" }
 > {

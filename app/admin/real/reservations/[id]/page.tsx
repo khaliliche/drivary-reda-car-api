@@ -7,7 +7,7 @@ import {
   updateReservationHandoverAction,
   deleteReservationAction,
 } from "@/app/admin/real/actions";
-import { calculateBilling, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
+import { resolveBilling, getFullName, calculateAge, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import HandoverForm from "@/components/admin/HandoverForm";
 import SendSigningLinkButton from "@/components/admin/SendSigningLinkButton";
@@ -72,21 +72,7 @@ export default async function AdminReservationDetailPage({
       vehicle?.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS,
   };
 
-  const rentalBilling = calculateBilling(
-    vehiclePricing,
-    reservation.start_date,
-    reservation.end_date
-  );
-
-  const deliveryFee = Number(reservation.delivery_fee);
-  const pickupFee = Number(reservation.pickup_fee);
-
-  const billing = {
-    days: rentalBilling.days,
-    totalHT: rentalBilling.subtotal + deliveryFee + pickupFee,
-    tva: rentalBilling.tva,
-    totalTTC: rentalBilling.total + deliveryFee + pickupFee,
-  };
+  const billing = resolveBilling(vehiclePricing, reservation);
 
   return (
     <div className="min-h-screen bg-[var(--color-mist)]/40 lg:flex">
@@ -105,7 +91,7 @@ export default async function AdminReservationDetailPage({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl font-extrabold text-[var(--color-ink)]">
-                Réservation #{reservation.id} — {reservation.full_name}
+                Réservation #{reservation.id} — {getFullName(reservation)}
               </h1>
 
               {reservation.contract_number && (
@@ -205,8 +191,8 @@ export default async function AdminReservationDetailPage({
               </h2>
 
               <dl className="mt-3 flex flex-col gap-2 text-sm">
-                <Row label="Nom" value={reservation.full_name} />
-                <Row label="Âge" value={`${reservation.age} ans`} />
+                <Row label="Nom" value={getFullName(reservation)} />
+                <Row label="Âge" value={`${calculateAge(reservation.date_naissance)} ans`} />
                 <Row label="CIN" value={reservation.cin_number} />
                 <Row
                   label="Permis N°"
@@ -240,7 +226,12 @@ export default async function AdminReservationDetailPage({
                 <dl className="mt-3 flex flex-col gap-2 text-sm">
                   <Row
                     label="Nom"
-                    value={reservation.second_driver_full_name || "—"}
+                    value={
+                      getFullName({
+                        prenom: reservation.second_driver_prenom,
+                        nom: reservation.second_driver_nom,
+                      }) || "—"
+                    }
                   />
                   <Row
                     label="CIN"
@@ -311,16 +302,16 @@ export default async function AdminReservationDetailPage({
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
               <Row label="Jours" value={`${billing.days}`} />
               <Row
-                label="Total HT"
-                value={`${billing.totalHT.toFixed(2)} DH`}
-              />
-              <Row
-                label="TVA (20%)"
-                value={`${billing.tva.toFixed(2)} DH`}
-              />
-              <Row
                 label="Total TTC"
                 value={`${billing.totalTTC.toFixed(2)} DH`}
+              />
+              <Row
+                label="Avance"
+                value={`${billing.avance.toFixed(2)} DH`}
+              />
+              <Row
+                label="Reste à payer"
+                value={`${billing.resteAPayer.toFixed(2)} DH`}
               />
             </dl>
           </section>
@@ -342,6 +333,9 @@ export default async function AdminReservationDetailPage({
                   mileage_end: reservation.mileage_end,
                   damages: reservation.damages,
                   equipment: reservation.equipment,
+                  fuel_type: reservation.fuel_type,
+                  fuel_level_out: reservation.fuel_level_out,
+                  fuel_level_in: reservation.fuel_level_in,
                   delivery_fee: Number(reservation.delivery_fee),
                   pickup_fee: Number(reservation.pickup_fee),
                 }}

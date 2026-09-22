@@ -2,7 +2,7 @@
 import { join } from "path";
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Rect } from "@react-pdf/renderer";
 import type { Reservation, Vehicle } from "@/lib/db";
-import { DAMAGE_TYPES, EQUIPMENT_ITEMS, resolveBilling, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
+import { DAMAGE_TYPES, EQUIPMENT_ITEMS, resolveBilling, getFullName, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
 
 const BLACK = "#000000";
 
@@ -261,7 +261,7 @@ export function ContractDocument({
         <View style={styles.twoColRow}>
           <View style={styles.halfCol}>
             <Card title="Conducteur">
-              <Field label="Nom & Prénom" value={reservation.full_name} />
+              <Field label="Nom & Prénom" value={getFullName(reservation)} />
               <Field label="Adresse" value={reservation.driver_address} />
               <Field label="Téléphone" value={reservation.driver_phone} />
               <Field label="N° C.I.N" value={reservation.cin_number} />
@@ -273,7 +273,14 @@ export function ContractDocument({
             <Card title="Autre conducteur">
               <Field
                 label="Nom & Prénom"
-                value={reservation.has_second_driver ? reservation.second_driver_full_name : ""}
+                value={
+                  reservation.has_second_driver
+                    ? getFullName({
+                        prenom: reservation.second_driver_prenom,
+                        nom: reservation.second_driver_nom,
+                      })
+                    : ""
+                }
               />
               <Field
                 label="Adresse"
@@ -333,8 +340,8 @@ export function ContractDocument({
               <Field label="Nombre de jours" value={`${billing.days}`} />
               <Field label="Frais de livraison" value={`${Number(reservation.delivery_fee).toFixed(2)} DH`} />
               <Field label="Frais de reprise" value={`${Number(reservation.pickup_fee).toFixed(2)} DH`} />
-              <Field label="Total Hors Taxes" value={`${billing.totalHT.toFixed(2)} DH`} />
-              <Field label="T.V.A 20%" value={`${billing.tva.toFixed(2)} DH`} />
+              <Field label="Avance" value={`${billing.avance.toFixed(2)} DH`} />
+              <Field label="Reste à payer" value={`${billing.resteAPayer.toFixed(2)} DH`} />
               <Field label="Total à payer" value={`${billing.totalTTC.toFixed(2)} DH`} strong />
             </Card>
           </View>

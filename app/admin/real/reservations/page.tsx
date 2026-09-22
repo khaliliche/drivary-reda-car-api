@@ -1,7 +1,8 @@
 ﻿import Link from "next/link";
 import { getReservations, getVehicles } from "@/lib/db";
+import { getFullName, calculateAge } from "@/lib/contract";
 import { updateReservationStatusAction, deleteReservationAction } from "@/app/admin/real/actions";
-import { CalendarClock, Clock, CheckCircle2, Wallet } from "lucide-react";
+import { CalendarClock, Clock, CheckCircle2, Wallet, Plus } from "lucide-react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -87,6 +88,13 @@ export default async function AdminReservationsPage({
               </h1>
               <p className="mt-1 text-sm text-black/50">{reservations.length} au total</p>
             </div>
+            <Link
+              href="/admin/real/reservations/new"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--color-red-primary)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]"
+            >
+              <Plus className="h-4 w-4" />
+              Nouvelle location
+            </Link>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -139,12 +147,12 @@ export default async function AdminReservationsPage({
                         href={`/admin/real/reservations/${r.id}`}
                         className="flex items-center gap-2.5 hover:opacity-80"
                       >
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(r.full_name)}`}>
-                          {initials(r.full_name)}
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(getFullName(r))}`}>
+                          {initials(getFullName(r))}
                         </div>
                         <div>
-                          <p className="font-semibold text-[var(--color-ink)]">{r.full_name}</p>
-                          <p className="text-xs text-black/40">{r.age} ans · CIN {r.cin_number} · Permis {licenseYears(r.license_issue_date)}</p>
+                          <p className="font-semibold text-[var(--color-ink)]">{getFullName(r)}</p>
+                          <p className="text-xs text-black/40">{calculateAge(r.date_naissance)} ans · CIN {r.cin_number} · Permis {licenseYears(r.license_issue_date)}</p>
                         </div>
                       </Link>
                     </td>
@@ -201,11 +209,11 @@ export default async function AdminReservationsPage({
               <div key={r.id} className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <Link href={`/admin/real/reservations/${r.id}`} className="flex items-center gap-2.5">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(r.full_name)}`}>
-                      {initials(r.full_name)}
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${avatarColor(getFullName(r))}`}>
+                      {initials(getFullName(r))}
                     </div>
                     <div>
-                      <p className="font-semibold text-[var(--color-ink)]">{r.full_name}</p>
+                      <p className="font-semibold text-[var(--color-ink)]">{getFullName(r)}</p>
                       <p className="text-xs text-black/45">{r.vehicle_label}</p>
                     </div>
                   </Link>
@@ -276,5 +284,3 @@ function StatCard({
     </div>
   );
 }
-
-

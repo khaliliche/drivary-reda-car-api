@@ -1,4 +1,5 @@
 import { getReservationBySigningToken, isSecondDriverToken } from "@/lib/db";
+import { getFullName } from "@/lib/contract";
 import SignatureForm from "@/components/sign/SignatureForm";
 
 function formatDate(value: string | Date) {
@@ -53,7 +54,9 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   const tokenExpiresAt = isSecondDriver
     ? reservation.signing_token_2_expires_at
     : reservation.signing_token_expires_at;
-  const displayName = isSecondDriver ? reservation.second_driver_full_name : reservation.full_name;
+  const displayName = isSecondDriver
+    ? getFullName({ prenom: reservation.second_driver_prenom, nom: reservation.second_driver_nom })
+    : getFullName(reservation);
 
   if (alreadySigned) {
     return (

@@ -19,6 +19,7 @@ export type Vehicle = {
 };
 
 export type ReservationStatus = "pending" | "contacted" | "confirmed" | "cancelled";
+export type ReservationSource = "online" | "walk_in";
 
 export type DamageEntry = {
   zone: string;
@@ -103,6 +104,7 @@ export type Reservation = {
   admin_signed_at: string | null;
   admin_signer_name: string | null;
 
+  source: ReservationSource;
   status: ReservationStatus;
   created_at: string;
 };
@@ -236,6 +238,44 @@ export async function createReservation(
     RETURNING *
   `;
   return rows[0];
+}
+
+export type CreateWalkInReservationInput = CreateReservationInput & {
+  fait_a?: string;
+};
+
+export async function createWalkInReservation(
+  data: CreateWalkInReservationInput
+): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: "conflict" }> {
+  const available = await isVehicleAvailable(data.vehicle_id, data.start_date, data.end_date);
+  if (!available) {
+    return { ok: false, reason: "conflict" };
+  }
+
+  const rows = await sql<Reservation[]>`
+    INSERT INTO reservations
+      (vehicle_id, vehicle_label,
+       prenom, nom, date_naissance, cin_number, license_issue_date,
+       driver_address, driver_phone, driver_license_number, driver_passport_number,
+       has_second_driver,
+       second_driver_prenom, second_driver_nom, second_driver_address, second_driver_phone,
+       second_driver_cin_number, second_driver_license_number, second_driver_passport_number,
+       start_date, end_date, start_time, end_time,
+       fait_a, source, status,
+       contract_number, contract_generated_at)
+    VALUES
+      (${data.vehicle_id}, ${data.vehicle_label},
+       ${data.prenom}, ${data.nom}, ${data.date_naissance}, ${data.cin_number}, ${data.license_issue_date},
+       ${data.driver_address}, ${data.driver_phone}, ${data.driver_license_number}, ${data.driver_passport_number},
+       ${data.has_second_driver},
+       ${data.second_driver_prenom ?? ""}, ${data.second_driver_nom ?? ""}, ${data.second_driver_address ?? ""}, ${data.second_driver_phone ?? ""},
+       ${data.second_driver_cin_number ?? ""}, ${data.second_driver_license_number ?? ""}, ${data.second_driver_passport_number ?? ""},
+       ${data.start_date}, ${data.end_date}, ${data.start_time}, ${data.end_time},
+       ${data.fait_a ?? ""}, 'walk_in', 'confirmed',
+       lpad(nextval('contract_number_seq')::text, 7, '0'), now())
+    RETURNING *
+  `;
+  return { ok: true, reservation: rows[0] };
 }
 
 export async function getReservations(): Promise<Reservation[]> {

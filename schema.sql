@@ -26,6 +26,7 @@ CREATE TABLE reservations (
   id SERIAL PRIMARY KEY,
   vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE SET NULL,
   vehicle_label TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'online' CHECK (source IN ('online', 'walk_in')),
 
   -- Driver (main)
   prenom TEXT NOT NULL,

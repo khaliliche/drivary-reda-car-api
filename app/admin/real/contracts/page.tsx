@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { FileText, FileSearch, Pencil } from "lucide-react";
 import { getReservations } from "@/lib/db";
+import { getFullName } from "@/lib/contract";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -66,7 +67,7 @@ export default async function AdminContractsPage({
 
         return (
           contractNumber.includes(query) ||
-          reservation.full_name.toLowerCase().includes(query) ||
+          getFullName(reservation).toLowerCase().includes(query) ||
           reservation.vehicle_label.toLowerCase().includes(query) ||
           reservation.registration_plate.toLowerCase().includes(query)
         );
@@ -164,7 +165,7 @@ export default async function AdminContractsPage({
                         </div>
 
                         <p className="mt-1 text-sm font-semibold text-black/70">
-                          {reservation.full_name}
+                          {getFullName(reservation)}
                         </p>
 
                         <p className="text-sm text-black/45">
@@ -213,6 +214,3 @@ export default async function AdminContractsPage({
     </div>
   );
 }
-
-
-

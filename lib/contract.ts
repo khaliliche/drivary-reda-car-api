@@ -119,3 +119,20 @@ export function resolveBilling(
     isOverridden: overrideTTC != null,
   };
 }
+
+// Single-line display name, used everywhere a reservation's driver name is
+// shown (admin lists, contract detail, the PDF, the signing page).
+export function getFullName(person: { prenom: string; nom: string }): string {
+  return `${person.nom} ${person.prenom}`.trim();
+}
+
+export function calculateAge(dateNaissance: string): number {
+  const dob = new Date(dateNaissance);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+}
