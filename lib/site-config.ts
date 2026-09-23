@@ -1,19 +1,16 @@
 ﻿export const siteConfig = {
-  name: "Ahmed Red Car",
+  name: "Drivary Car",
   tagline: "Location de voitures au Maroc",
-  phone: "+212 6 61 41 27 59",
-  whatsappNumber: "212661412759",
+  phone: "+212 6 60 05 61 93",
+  whatsappNumber: "212660056193",
+  instagram: "https://www.instagram.com/location_drivary_car/",
 
-  // Drivary Reda Car identity — used by the contract PDF (lib/pdf/ContractDocument.tsx).
-  // NOTE: `name`/`phone`/`whatsappNumber` above are still Ahmed Red Car's and are
-  // tracked separately as part of the full site rebrand; only the fields below
-  // are wired into the new contract for now.
   contractPhone: "06.60.05.61.93",
-  stampPhone: "06 68 59 67 78",
-  footerPhone: "07.52.78.24.22",
+  stampPhone: "06 60 05 61 93",
+  footerPhone: "06.60.05.61.93",
   ice: "003742254000065",
-  address: "HAY PAM N° 323 OULMES 15100, Khemisset",
-  email: "Drivary.Car25@gamil.Com",
+  address: "HAY PAM N° 323 OULMES 151000, Khemissat",
+  email: "drivary.car25@gmail.com",
 
   nav: [
     { label: "Accueil", href: "/" },
@@ -48,7 +45,7 @@ export function buildReservationWhatsAppMessage(data: {
   endTime: string;
 }) {
   const lines = [
-    `Nouvelle demande de reservation - Ahmed Red Car`,
+    `Nouvelle demande de reservation - Drivary Car`,
     ``,
     `Vehicule : ${data.vehicleLabel}`,
     `Client : ${data.fullName} (${data.age} ans)`,

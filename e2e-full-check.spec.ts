@@ -1,5 +1,5 @@
 ﻿/**
- * Full click-through test for Ahmed Red Car.
+ * Full click-through test for Drivary Car.
  *
  * WHY THIS EXISTS
  * Static checks (tsc/eslint/build) already passed with 0 errors and confirmed

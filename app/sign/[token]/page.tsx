@@ -76,7 +76,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   return (
     <Shell>
       <h1 className="mb-1 text-center font-display text-2xl font-extrabold text-[var(--color-ink)]">
-        Ahmed Red Car
+        Drivary Car
       </h1>
       <p className="mb-6 text-center text-sm text-black/50">
         Contrat de location - signature electronique

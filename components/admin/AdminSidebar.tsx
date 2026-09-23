@@ -25,14 +25,14 @@ export default function AdminSidebar({
         <Link href="/admin/real" className="mb-8 flex items-center gap-2 px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/ahmed-redcar-logo.png"
-            alt="Ahmed Red Car"
+            src="/drivary-car-logo.png"
+            alt="Drivary Car"
             className="h-9 w-9 rounded-lg object-cover"
           />
 
           <div className="leading-tight">
             <p className="font-display text-sm font-extrabold text-white">
-              Ahmed Red Car
+              Drivary Car
             </p>
             <p className="text-[11px] text-white/40">Espace admin</p>
           </div>
@@ -104,4 +104,6 @@ export default function AdminSidebar({
     </>
   );
 }
+
+
 

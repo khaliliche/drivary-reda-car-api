@@ -7,8 +7,8 @@ import { getDailyRate, resolveBilling, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/con
 import { siteConfig } from "@/lib/site-config";
 
 // Brand colors sampled from the printed Drivary Car contract.
-const NAVY = "#0B1F5C";
-const RED = "#C1272D";
+const NAVY = "#0B0A08";
+const RED = "#D4A017";
 const BLACK = "#000000";
 
 // Arabic labels ("كراء السيارات", "عقد") need a font that ships Arabic
