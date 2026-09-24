@@ -1,5 +1,5 @@
 {
-  "name": "ahmed-red-car",
+  "name": "drivary-car-api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -33,3 +33,4 @@
     "typescript": "^5"
   }
 }
+

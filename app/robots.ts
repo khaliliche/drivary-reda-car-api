@@ -1,8 +1,9 @@
-﻿import type { MetadataRoute } from "next";
+import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: "*", allow: "/", disallow: "/admin" },
-    sitemap: "https://ahmedredcar.com/sitemap.xml",
+    sitemap: "https://drivarycar.com/sitemap.xml",
   };
 }
+

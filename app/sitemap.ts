@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getVehicles } from "@/lib/db";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://ahmedredcar.com";
+  const base = "https://drivarycar.com";
 
   const staticRoutes = ["", "/vehicules"].map((path) => ({
     url: `${base}${path}`,

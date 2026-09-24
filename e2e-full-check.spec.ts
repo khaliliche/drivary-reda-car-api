@@ -1,4 +1,4 @@
-ï»¿/**
+/**
  * Full click-through test for Drivary Car.
  *
  * WHY THIS EXISTS
@@ -19,7 +19,7 @@
  *        npx playwright test e2e-full-check.spec.ts --headed
  *
  *   --headed lets you WATCH it click through everything. Drop --headed to run
- *   silently and just get a pass/fail report â€” good for a final check before
+ *   silently and just get a pass/fail report — good for a final check before
  *   a client meeting.
  *
  * SAFETY NOTE
@@ -36,14 +36,14 @@ const ADMIN_PASSWORD = process.env.ADMIN_TEST_PASSWORD;
 test.describe("Public site", () => {
   test("homepage loads and key sections render", async ({ page }) => {
     await page.goto(BASE_URL);
-    await expect(page).toHaveTitle(/Ahmed/i);
+    await expect(page).toHaveTitle(/Drivary/i);
     // Booking bar / trip finder should be present on the homepage.
     await expect(page.locator("body")).toBeVisible();
   });
 
   test("navbar links work", async ({ page }) => {
     await page.goto(BASE_URL);
-    await page.getByRole("link", { name: /vÃ©hicules|vehicles/i }).first().click();
+    await page.getByRole("link", { name: /véhicules|vehicles/i }).first().click();
     await expect(page).toHaveURL(/\/vehicules/);
   });
 
@@ -55,9 +55,9 @@ test.describe("Public site", () => {
     await expect(page).toHaveURL(/\/vehicules\/.+/);
 
     // The reservation form lives inside a modal that only appears after
-    // clicking "RÃ©server ce vÃ©hicule" (see ReservationSection.tsx) â€” it is
+    // clicking "Réserver ce véhicule" (see ReservationSection.tsx) — it is
     // NOT present on the page until then, so open it first.
-    await page.getByRole("button", { name: /rÃ©server/i }).first().click();
+    await page.getByRole("button", { name: /réserver/i }).first().click();
     await expect(page.locator("form")).toBeVisible();
   });
 
@@ -67,12 +67,12 @@ test.describe("Public site", () => {
     await firstCard.click();
     await expect(page).toHaveURL(/\/vehicules\/.+/);
 
-    // Open the reservation modal first â€” the form doesn't exist until this click.
-    await page.getByRole("button", { name: /rÃ©server/i }).first().click();
+    // Open the reservation modal first — the form doesn't exist until this click.
+    await page.getByRole("button", { name: /réserver/i }).first().click();
     const form = page.locator("form");
     await expect(form).toBeVisible();
 
-    // Fill whatever fields exist â€” adjust selectors if your field names differ.
+    // Fill whatever fields exist — adjust selectors if your field names differ.
     const nameInput = form.locator('input[name="name"], input[name="full_name"]').first();
     const phoneInput = form.locator('input[name="phone"], input[type="tel"]').first();
 
@@ -82,7 +82,7 @@ test.describe("Public site", () => {
     const submitBtn = form.locator('button[type="submit"]').first();
     if (await submitBtn.count()) {
       await submitBtn.click();
-      // Expect either a success message or a redirect â€” adjust to your actual UX.
+      // Expect either a success message or a redirect — adjust to your actual UX.
       await page.waitForTimeout(1500);
     }
   });
@@ -99,7 +99,7 @@ test.describe("Public site", () => {
 test.describe("Admin flows", () => {
   test.skip(!ADMIN_PASSWORD, "Set ADMIN_TEST_PASSWORD env var to run admin tests");
 
-  test("login â†’ dashboard â†’ logout", async ({ page }) => {
+  test("login ? dashboard ? logout", async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/real/login`);
     await page.locator('input[name="password"]').fill(ADMIN_PASSWORD!);
     await page.locator('button[type="submit"]').click();
@@ -108,7 +108,7 @@ test.describe("Admin flows", () => {
     await expect(page).toHaveURL(/\/admin\/real(?!\/login)/, { timeout: 10000 });
 
     // Logout
-    const logoutBtn = page.locator('form button[type="submit"]', { hasText: /dÃ©connexion|logout/i }).first();
+    const logoutBtn = page.locator('form button[type="submit"]', { hasText: /déconnexion|logout/i }).first();
     if (await logoutBtn.count()) {
       await logoutBtn.click();
       await expect(page).toHaveURL(/\/admin\/real\/login/);
@@ -123,13 +123,13 @@ test.describe("Admin flows", () => {
     await expect(page.locator("body")).toContainText(/incorrect/i);
   });
 
-  test("create â†’ edit â†’ delete a vehicle", async ({ page }) => {
+  test("create ? edit ? delete a vehicle", async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/real/login`);
     await page.locator('input[name="password"]').fill(ADMIN_PASSWORD!);
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/admin\/real(?!\/login)/);
 
-    // Create â€” scope to the actual create-vehicle form. The page also has a
+    // Create — scope to the actual create-vehicle form. The page also has a
     // logout button and language toggle that are both type="submit", so an
     // unscoped selector matches 3 buttons and Playwright refuses to guess.
     await page.goto(`${BASE_URL}/admin/real/new`);
@@ -144,10 +144,10 @@ test.describe("Admin flows", () => {
     await expect(page).toHaveURL(/\/admin\/real$/, { timeout: 10000 });
     await expect(page.locator("body")).toContainText("TEST-CAR");
 
-    // Find and delete it (cleanup â€” keeps your DB tidy after this test).
+    // Find and delete it (cleanup — keeps your DB tidy after this test).
     const row = page.locator("text=TEST-CAR").first();
     await expect(row).toBeVisible();
-    // Navigate up to its row's delete form/button â€” adjust selector to your actual markup
+    // Navigate up to its row's delete form/button — adjust selector to your actual markup
     // if this doesn't match (e.g. if delete is icon-only).
     const deleteForm = page.locator("form", { has: page.locator("text=TEST-CAR") });
     if (await deleteForm.count()) {
@@ -169,3 +169,4 @@ test.describe("Admin flows", () => {
     }
   });
 });
+

@@ -1,5 +1,5 @@
-﻿import { Fragment, type ComponentProps } from "react";
-import { existsSync } from "fs";
+﻿import { Fragment } from "react";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { Document, Page, View, Text, StyleSheet, Svg, Rect, Circle, Path, Line, Image, Font } from "@react-pdf/renderer";
 import type { Reservation, Vehicle } from "@/lib/db";
@@ -7,8 +7,8 @@ import { getDailyRate, resolveBilling, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/con
 import { siteConfig } from "@/lib/site-config";
 
 // Brand colors sampled from the printed Drivary Car contract.
-const NAVY = "#0B0A08";
-const RED = "#D4A017";
+const BLUE = "#12297D";
+const RED = "#A4031C";
 const BLACK = "#000000";
 
 // Arabic labels ("كراء السيارات", "عقد") need a font that ships Arabic
@@ -32,6 +32,31 @@ if (HAS_ARABIC_FONT) {
   });
 }
 
+// Real logo / stamp images — drop these files in to turn on the image
+// versions; falls back to a drawn vector approximation when missing so
+// the PDF never breaks just because an asset hasn't been added yet.
+const LOGO_PATH = join(process.cwd(), "public/logo-badge.png");
+const HAS_LOGO = existsSync(LOGO_PATH);
+
+const TAMPON_PATH = join(process.cwd(), "public/tampon.png");
+const HAS_TAMPON = existsSync(TAMPON_PATH);
+
+// We pass these to react-pdf's <Image> as base64 data URIs rather than
+// raw filesystem paths. Passing a bare path string is fragile across
+// platforms — Windows absolute paths ("C:\Users\...") start with what
+// looks like a URI scheme ("C:"), which can trip up naive "is this a
+// URL?" checks in image-loading code and cause it to silently fail to
+// load the file instead of reading it locally. A data URI is
+// unambiguous everywhere, so we read the files once here at module
+// load and reuse the resulting strings.
+const LOGO_DATA_URI = HAS_LOGO
+  ? `data:image/png;base64,${readFileSync(LOGO_PATH).toString("base64")}`
+  : null;
+
+const TAMPON_DATA_URI = HAS_TAMPON
+  ? `data:image/png;base64,${readFileSync(TAMPON_PATH).toString("base64")}`
+  : null;
+
 // Renders Arabic text only once a real Arabic-capable font is registered;
 // renders nothing at all otherwise (never falls back to Helvetica for
 // Arabic text — see note above).
@@ -39,11 +64,21 @@ function Arabic({
   style,
   children,
 }: {
-  style: ComponentProps<typeof Text>["style"];
+  // react-pdf's <Text> is overloaded (regular TextProps vs SVGTextProps),
+  // which makes ComponentProps<typeof Text>["style"] resolve to a union
+  // that the JSX call site then rejects. This wrapper only ever renders
+  // plain (non-SVG) <Text>, so we deliberately keep the prop loosely
+  // typed here rather than fight the overload — it's still safe because
+  // the only callers are the two `styles.*` objects below.
+  style?: any;
   children: string;
 }) {
   if (!HAS_ARABIC_FONT) return null;
-  return <Text style={[style, { fontFamily: "NotoSansArabic" }]}>{children}</Text>;
+  return (
+    <Text style={[style, { fontFamily: "NotoSansArabic" }] as any}>
+      {children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -62,41 +97,55 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   contactBlock: { width: 130 },
-  contactText: { fontSize: 9, fontWeight: 700, color: NAVY, marginTop: 2 },
-  titleFr: { fontSize: 14, fontWeight: 800, color: NAVY },
+  contactRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 3 },
+  contactText: { fontSize: 9, fontWeight: 700, color: BLUE },
+  titleFr: { fontSize: 14, fontWeight: 800, color: BLUE },
 
   logoBadge: { alignItems: "center", width: 190 },
-  logoWordmark: { fontSize: 16, fontWeight: 800, color: NAVY, letterSpacing: 0.5, marginTop: 1 },
+  logoImage: { width: 100, height: 93, objectFit: "contain" },
+  logoWordmark: { fontSize: 16, fontWeight: 800, color: BLUE, letterSpacing: 0.5, marginTop: 1 },
 
-  titleAr: { fontSize: 15, fontWeight: 800, textAlign: "right" },
+  titleAr: { fontSize: 15, fontWeight: 800, textAlign: "right", color: BLUE },
   arWrap: { width: 130, alignItems: "flex-end" },
 
   contractBox: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    border: "1.2 solid " + NAVY,
+    border: "1.2 solid " + BLUE,
     borderRadius: 4,
     marginBottom: 8,
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
-  contractLabel: { fontSize: 13, fontWeight: 800, color: NAVY },
-  contractLabelAr: { fontSize: 13, fontWeight: 800 },
+  contractLabel: { fontSize: 13, fontWeight: 800, color: BLUE },
+  contractLabelAr: { fontSize: 13, fontWeight: 800, color: BLUE },
   contractNumber: { fontSize: 15, fontWeight: 800, color: RED },
 
   // ---- Cards ----
   twoColRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
   halfCol: { flex: 1 },
-  card: { border: "1.2 solid " + NAVY, borderRadius: 6 },
+  card: { border: "1.2 solid " + BLUE, borderRadius: 6 },
   cardHeader: {
-    backgroundColor: NAVY,
+    backgroundColor: BLUE,
     paddingVertical: 3,
     borderTopLeftRadius: 5,
     borderTopRightRadius: 5,
   },
   cardHeaderText: { color: "#fff", fontSize: 8.5, fontWeight: 700, textAlign: "center" },
   cardBody: { padding: 7 },
+
+  // Right-column info box (Vehicule + Facturation + Prolongation, no
+  // sub-headers — matches the printed blank form, which just lists the
+  // fields inside one continuous bordered box).
+  infoBox: {
+    flex: 1,
+    border: "1.2 solid " + BLUE,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 6,
+  },
+  infoBoxGap: { height: 6 },
 
   fieldRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 5.5 },
   fieldLabel: { fontSize: 7.3, fontWeight: 700, marginRight: 4 },
@@ -105,7 +154,7 @@ const styles = StyleSheet.create({
     fontSize: 7.5,
     borderBottomWidth: 0.75,
     borderBottomStyle: "dotted",
-    borderBottomColor: "#000",
+    borderBottomColor: BLUE,
     paddingBottom: 1,
   },
   fieldValueStrong: {
@@ -114,55 +163,54 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     borderBottomWidth: 0.75,
     borderBottomStyle: "dotted",
-    borderBottomColor: "#000",
+    borderBottomColor: BLUE,
     paddingBottom: 1,
   },
 
   // ---- Signature strip (1er / autre conducteur) ----
   sigStripRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  sigStripCol: { flex: 1, border: "1.2 solid " + NAVY, borderRadius: 6 },
+  sigStripCol: { flex: 1, border: "1.2 solid " + BLUE, borderRadius: 6 },
   sigStripHeader: { paddingVertical: 4, paddingHorizontal: 8 },
-  sigStripHeaderText: { fontSize: 8.5, fontWeight: 800, color: NAVY },
+  sigStripHeaderText: { fontSize: 8.5, fontWeight: 800, color: BLUE },
   sigStripBody: { height: 40 },
   sigImage: { width: "100%", height: "100%", objectFit: "contain" },
 
-  // ---- Row: Depart/Retour (left) + Vehicule (right) ----
-  topLowerRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  depRetGroup: { width: "42%", flexDirection: "row", gap: 6 },
+  // ---- Lower half: Depart/Retour + Carburant/Diagram (left) next to
+  // the merged Vehicule/Facturation/Prolongation/Visa column (right) ----
+  lowerRow: { flexDirection: "row", gap: 8 },
+  lowerLeftCol: { width: "50%" },
+  lowerRightCol: { width: "50%" },
+
+  depRetRow: { flexDirection: "row", gap: 6, marginBottom: 6 },
   depRetCol: { flex: 1 },
-  vehiculeCol: { flex: 1 },
 
-  // ---- Full-width Facturation / Prolongation (matches the printed layout) ----
-  fullWidthCard: { marginBottom: 6 },
-  facturationGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 18 },
-  facturationField: { width: "31%" },
-
-  // ---- Fuel + damage diagram + visa row ----
-  diagramRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  diagramCol: { width: "32%", border: "1.2 solid " + NAVY, borderRadius: 6, padding: 7, alignItems: "center" },
+  diagramRow: { flexDirection: "row", gap: 6 },
+  diagramCol: { flex: 1, border: "1.2 solid " + BLUE, borderRadius: 6, padding: 7, alignItems: "center" },
   carbLabel: { fontSize: 8.5, fontWeight: 800, marginTop: 6, marginBottom: 4, alignSelf: "flex-start" },
   carbRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 3, alignSelf: "flex-start" },
-  carbBox: { width: 9, height: 9, border: "1 solid #000" },
-  carbBoxChecked: { backgroundColor: BLACK },
+  carbBox: { width: 9, height: 9, border: "1 solid " + BLUE },
+  carbBoxChecked: { backgroundColor: BLUE },
   carbText: { fontSize: 7.5, fontWeight: 700 },
 
-  carDiagramCol: { flex: 1, border: "1.2 solid " + NAVY, borderRadius: 6, alignItems: "center", justifyContent: "center" },
+  carDiagramCol: { flex: 1, border: "1.2 solid " + BLUE, borderRadius: 6, alignItems: "center", justifyContent: "center" },
 
-  // ---- Visa / stamp box ----
-  visaCol: { flex: 1, border: "1.2 solid " + NAVY, borderRadius: 6, padding: 7 },
-  visaLabel: { fontSize: 8, fontWeight: 800, marginBottom: 3 },
-  stampWordmark: { fontSize: 10, fontWeight: 800, color: NAVY, fontStyle: "italic" },
-  stampLine: { fontSize: 6.8, color: NAVY, fontStyle: "italic" },
-  adminSigImage: { width: 90, height: 32, objectFit: "contain", marginTop: 2 },
+  // ---- Visa / stamp box: big owner signature ABOVE the small tampon ----
+  visaBox: { border: "1.2 solid " + BLUE, borderRadius: 6, padding: 7, flex: 1 },
+  visaLabel: { fontSize: 8, fontWeight: 800, marginBottom: 3, color: BLUE },
+  visaSigWrap: { height: 46, alignItems: "center", justifyContent: "center" },
+  visaSigImage: { width: "100%", height: "100%", objectFit: "contain" },
+  tamponImage: { width: 90, height: 38, objectFit: "contain", alignSelf: "center", marginTop: 2 },
+  stampWordmark: { fontSize: 10, fontWeight: 800, color: BLUE, fontStyle: "italic" },
+  stampLine: { fontSize: 6.8, color: BLUE, fontStyle: "italic" },
 
   // ---- Footer ----
   footer: {
-    marginTop: 4,
-    borderTop: "0.75 solid " + NAVY,
+    marginTop: 6,
+    borderTop: "0.75 solid " + BLUE,
     paddingTop: 5,
     alignItems: "center",
   },
-  footerText: { fontSize: 7.3, fontWeight: 700, color: NAVY },
+  footerText: { fontSize: 7.3, fontWeight: 700, color: BLUE },
 });
 
 function formatDate(value: string | Date | null) {
@@ -194,54 +242,65 @@ function Field({ label, value, strong }: { label: string; value?: string; strong
   );
 }
 
-// Drawn vector badge approximating the printed crest (arched car
-// silhouette + two stars either side + "DRIVARY CAR" wordmark). This is
-// a stand-in, not a pixel-accurate reproduction — swap for an <Image>
-// with the real logo file once supplied for an exact match.
+// Drawn vector badge — used only as a fallback when public/logo-badge.png
+// hasn't been added yet, so the PDF still renders something reasonable.
+function LogoBadgeFallback() {
+  return (
+    <Svg width={110} height={34} viewBox="0 0 150 46">
+      <Path
+        d="M14 34 C14 30 18 27 24 27 L34 27 C37 20 44 15 54 14 L96 14 C106 15 113 20 116 27 L126 27 C132 27 136 30 136 34 L136 36 L14 36 Z"
+        stroke={BLUE}
+        strokeWidth={2}
+        fill="none"
+      />
+      <Path
+        d="M46 27 C49 21 55 17 62 16 L88 16 C93 17 98 20 101 25"
+        stroke={BLUE}
+        strokeWidth={1.4}
+        fill="none"
+      />
+      <Circle cx={40} cy={36} r={6.5} stroke={BLUE} strokeWidth={2} fill="#fff" />
+      <Circle cx={110} cy={36} r={6.5} stroke={BLUE} strokeWidth={2} fill="#fff" />
+      {[0, 1].map((i) => (
+        <Path
+          key={"starL" + i}
+          d="M5 8 l1.2 2.6 2.8 0.3 -2.1 2 0.6 2.8 -2.5 -1.4 -2.5 1.4 0.6 -2.8 -2.1 -2 2.8 -0.3 Z"
+          fill={BLUE}
+          transform={`translate(${i * 9}, 2)`}
+        />
+      ))}
+      {[0, 1].map((i) => (
+        <Path
+          key={"starR" + i}
+          d="M5 8 l1.2 2.6 2.8 0.3 -2.1 2 0.6 2.8 -2.5 -1.4 -2.5 1.4 0.6 -2.8 -2.1 -2 2.8 -0.3 Z"
+          fill={BLUE}
+          transform={`translate(${127 + i * 9}, 2)`}
+        />
+      ))}
+    </Svg>
+  );
+}
+
+// Real logo image once public/logo-badge.png exists; falls back to the
+// drawn vector badge otherwise.
 function LogoBadge() {
   return (
     <View style={styles.logoBadge}>
-      <Svg width={110} height={34} viewBox="0 0 150 46">
-        {/* car silhouette: low roofline + two wheels, drawn as a single closed path */}
-        <Path
-          d="M14 34 C14 30 18 27 24 27 L34 27 C37 20 44 15 54 14 L96 14 C106 15 113 20 116 27 L126 27 C132 27 136 30 136 34 L136 36 L14 36 Z"
-          stroke={NAVY}
-          strokeWidth={2}
-          fill="none"
-        />
-        <Path
-          d="M46 27 C49 21 55 17 62 16 L88 16 C93 17 98 20 101 25"
-          stroke={NAVY}
-          strokeWidth={1.4}
-          fill="none"
-        />
-        <Circle cx={40} cy={36} r={6.5} stroke={NAVY} strokeWidth={2} fill="#fff" />
-        <Circle cx={110} cy={36} r={6.5} stroke={NAVY} strokeWidth={2} fill="#fff" />
-        {[0, 1].map((i) => (
-          <Path
-            key={"starL" + i}
-            d="M5 8 l1.2 2.6 2.8 0.3 -2.1 2 0.6 2.8 -2.5 -1.4 -2.5 1.4 0.6 -2.8 -2.1 -2 2.8 -0.3 Z"
-            fill={NAVY}
-            transform={`translate(${i * 9}, 2)`}
-          />
-        ))}
-        {[0, 1].map((i) => (
-          <Path
-            key={"starR" + i}
-            d="M5 8 l1.2 2.6 2.8 0.3 -2.1 2 0.6 2.8 -2.5 -1.4 -2.5 1.4 0.6 -2.8 -2.1 -2 2.8 -0.3 Z"
-            fill={NAVY}
-            transform={`translate(${127 + i * 9}, 2)`}
-          />
-        ))}
-      </Svg>
-      <Text style={styles.logoWordmark}>DRIVARY CAR</Text>
+      {HAS_LOGO && LOGO_DATA_URI ? (
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <Image src={LOGO_DATA_URI} style={styles.logoImage} />
+      ) : (
+        <>
+          <LogoBadgeFallback />
+          <Text style={styles.logoWordmark}>DRIVARY CAR</Text>
+        </>
+      )}
     </View>
   );
 }
 
 // Fuel gauge dial: five ticks (0, 1/4, 1/2, 3/4, 1) with a needle
-// pointing at the recorded fuel_level_out. Enlarged and spaced further
-// out than the first pass, so labels don't collide/get clipped.
+// pointing at the recorded fuel_level_out.
 function FuelGauge({ level }: { level: number | null }) {
   const cx = 44;
   const cy = 42;
@@ -262,7 +321,7 @@ function FuelGauge({ level }: { level: number | null }) {
     <Svg width={88} height={56} viewBox="0 0 88 56">
       <Path
         d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-        stroke={NAVY}
+        stroke={BLUE}
         strokeWidth={1.5}
         fill="none"
       />
@@ -277,7 +336,7 @@ function FuelGauge({ level }: { level: number | null }) {
         const anchor = t === 0 ? "start" : t === 1 ? "end" : "middle";
         return (
           <Fragment key={t}>
-            <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={NAVY} strokeWidth={1.2} />
+            <Line x1={x1} y1={y1} x2={x2} y2={y2} stroke={BLUE} strokeWidth={1.2} />
             <Text x={lx} y={ly + 2} style={{ fontSize: 6.5 }} textAnchor={anchor}>
               {label}
             </Text>
@@ -290,10 +349,7 @@ function FuelGauge({ level }: { level: number | null }) {
   );
 }
 
-// Top-down "exploded" vehicle outline used for damage marking on the
-// printed contract (front bumper "AV" at top, rear bumper "AR" at
-// bottom, wheels splayed to either side). Markers are placed at the
-// recorded zone.
+// Top-down "exploded" vehicle outline used for damage marking.
 const ZONE_POSITIONS: Record<string, { x: number; y: number }> = {
   Avant: { x: 55, y: 10 },
   Arrière: { x: 55, y: 122 },
@@ -316,10 +372,9 @@ function CarDiagram({ damages }: { damages: { zone: string; type: string }[] }) 
   return (
     <Svg width={100} height={132} viewBox="0 0 110 140">
       <Text x={55} y={9} style={{ fontSize: 8, fontWeight: 700 }} textAnchor="middle">AV</Text>
-      <Rect x={28} y={14} width={54} height={112} rx={20} fill="#fafafa" stroke={NAVY} strokeWidth={1.1} />
+      <Rect x={28} y={14} width={54} height={112} rx={20} fill="#fafafa" stroke={BLUE} strokeWidth={1.1} />
       <Rect x={33} y={26} width={44} height={18} rx={5} fill="#fff" stroke="#bbb" strokeWidth={0.6} />
       <Rect x={33} y={96} width={44} height={18} rx={5} fill="#fff" stroke="#bbb" strokeWidth={0.6} />
-      {/* wheels splayed outward, connected by a short tick to the body */}
       <Line x1={20} y1={34} x2={28} y2={34} stroke="#666" strokeWidth={1} />
       <Rect x={8} y={26} width={12} height={20} rx={3} fill="#666" />
       <Line x1={82} y1={34} x2={90} y2={34} stroke="#666" strokeWidth={1} />
@@ -356,7 +411,7 @@ export function ContractDocument({
     min_rental_days: vehicle?.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS,
   };
   const billing = resolveBilling(vehiclePricing, reservation);
-    const dailyRate = Number(getDailyRate(vehiclePricing, billing.days)) || 0;
+  const dailyRate = Number(getDailyRate(vehiclePricing, billing.days)) || 0;
   const contractNumber = reservation.contract_number ?? "";
 
   return (
@@ -366,7 +421,9 @@ export function ContractDocument({
         <View style={styles.headerRow}>
           <View style={styles.contactBlock}>
             <Text style={styles.titleFr}>Location de voiture</Text>
-            <Text style={styles.contactText}>{siteConfig.contractPhone}</Text>
+            <View style={styles.contactRow}>
+              <Text style={styles.contactText}>{siteConfig.contractPhone}</Text>
+            </View>
           </View>
           <LogoBadge />
           <View style={styles.arWrap}>
@@ -442,97 +499,99 @@ export function ContractDocument({
           </View>
         </View>
 
-        {/* Depart/Retour (left) + Vehicule (right) */}
-        <View style={styles.topLowerRow}>
-          <View style={styles.depRetGroup}>
-            <View style={styles.depRetCol}>
-              <Card title="DEPART">
-                <Field label="Le :" value={formatDate(reservation.start_date)} />
-                <Field label="Hr :" value={reservation.start_time} />
-                <Field label="Lieu de livraison :" value={reservation.lieu_livraison_depart} />
-              </Card>
-            </View>
-            <View style={styles.depRetCol}>
-              <Card title="RETOUR">
-                <Field label="Le :" value={formatDate(reservation.end_date)} />
-                <Field label="Hr :" value={reservation.end_time} />
-                <Field label="Lieu de livraison :" value={reservation.lieu_livraison_retour} />
-              </Card>
-            </View>
-          </View>
-          <View style={styles.vehiculeCol}>
-            <Card title="Véhicule">
-              <Field label="Type de véhicule :" value={vehicle ? `${vehicle.brand} ${vehicle.model}` : reservation.vehicle_label} />
-              <Field label="Matricule :" value={reservation.registration_plate} />
-            </Card>
-          </View>
-        </View>
-
-        {/* Facturation — full width, matches the printed layout */}
-        <View style={styles.fullWidthCard}>
-          <Card title="Facturation">
-            <View style={styles.facturationGrid}>
-              <View style={styles.facturationField}><Field label="Nombre de jours :" value={`${billing.days}`} /></View>
-              <View style={styles.facturationField}><Field label="Prix par jours :" value={`${dailyRate.toFixed(2)} DH`} /></View>
-              <View style={styles.facturationField}><Field label="Total TTC :" value={`${billing.totalTTC.toFixed(2)} DH`} strong /></View>
-              <View style={styles.facturationField}><Field label="Avance :" value={`${billing.avance.toFixed(2)} DH`} /></View>
-              <View style={styles.facturationField}><Field label="Reste à payer :" value={`${billing.resteAPayer.toFixed(2)} DH`} strong /></View>
-            </View>
-          </Card>
-        </View>
-
-        {/* Prolongation — full width, matches the printed layout */}
-        <View style={styles.fullWidthCard}>
-          <Card title="Prolongation">
-            <View style={styles.facturationGrid}>
-              <View style={styles.facturationField}><Field label="Prolongation :" value={reservation.prolongation} /></View>
-              <View style={{ width: "62%" }}>
-                <Field
-                  label="Retour Prévu le :"
-                  value={
-                    reservation.retour_prevu_le
-                      ? `${formatDate(reservation.retour_prevu_le)} à ${new Date(reservation.retour_prevu_le).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
-                      : ""
-                  }
-                />
+        {/* Lower half: Depart/Retour + Carburant/Diagram (left) next to
+            the merged Vehicule/Facturation/Prolongation/Visa column (right) */}
+        <View style={styles.lowerRow}>
+          <View style={styles.lowerLeftCol}>
+            <View style={styles.depRetRow}>
+              <View style={styles.depRetCol}>
+                <Card title="DEPART">
+                  <Field label="Le :" value={formatDate(reservation.start_date)} />
+                  <Field label="Hr :" value={reservation.start_time} />
+                  <Field label="Lieu de livraison :" value={reservation.lieu_livraison_depart} />
+                </Card>
+              </View>
+              <View style={styles.depRetCol}>
+                <Card title="RETOUR">
+                  <Field label="Le :" value={formatDate(reservation.end_date)} />
+                  <Field label="Hr :" value={reservation.end_time} />
+                  <Field label="Lieu de livraison :" value={reservation.lieu_livraison_retour} />
+                </Card>
               </View>
             </View>
-          </Card>
-        </View>
 
-        {/* Fuel gauge + damage diagram + Visa Direction */}
-        <View style={styles.diagramRow}>
-          <View style={styles.diagramCol}>
-                        <FuelGauge
-              level={
-                reservation.fuel_level_out == null
-                  ? null
-                  : Number(reservation.fuel_level_out)
-              }
-            />
-            <Text style={styles.carbLabel}>CARBURANT :</Text>
-            <View style={styles.carbRow}>
-              <View style={[styles.carbBox, ...(reservation.fuel_type === "super_sans_plomb" ? [styles.carbBoxChecked] : [])]} />
-              <Text style={styles.carbText}>SUPER SANS PLOMB</Text>
-            </View>
-            <View style={styles.carbRow}>
-              <View style={[styles.carbBox, ...(reservation.fuel_type === "gasoil" ? [styles.carbBoxChecked] : [])]} />
-              <Text style={styles.carbText}>GASOIL</Text>
+            <View style={styles.diagramRow}>
+              <View style={styles.diagramCol}>
+                <FuelGauge
+                  level={
+                    reservation.fuel_level_out == null
+                      ? null
+                      : Number(reservation.fuel_level_out)
+                  }
+                />
+                <Text style={styles.carbLabel}>CARBURANT :</Text>
+                <View style={styles.carbRow}>
+                  <View style={[styles.carbBox, ...(reservation.fuel_type === "super_sans_plomb" ? [styles.carbBoxChecked] : [])]} />
+                  <Text style={styles.carbText}>SUPER SANS PLOMB</Text>
+                </View>
+                <View style={styles.carbRow}>
+                  <View style={[styles.carbBox, ...(reservation.fuel_type === "gasoil" ? [styles.carbBoxChecked] : [])]} />
+                  <Text style={styles.carbText}>GASOIL</Text>
+                </View>
+              </View>
+              <View style={styles.carDiagramCol}>
+                <CarDiagram damages={reservation.damages ?? []} />
+              </View>
             </View>
           </View>
-          <View style={styles.carDiagramCol}>
-                        <CarDiagram damages={reservation.damages ?? []} />
-          </View>
-          <View style={styles.visaCol}>
-            <Text style={styles.visaLabel}>Visa Direction :</Text>
-            {reservation.admin_signature_data ? (
-              // eslint-disable-next-line jsx-a11y/alt-text
-              <Image src={reservation.admin_signature_data} style={styles.adminSigImage} />
-            ) : null}
-            <Text style={styles.stampWordmark}>DRIVARY CAR</Text>
-            <Text style={styles.stampLine}>ICE: {siteConfig.ice}</Text>
-            <Text style={styles.stampLine}>GSM: {siteConfig.stampPhone}</Text>
-            <Text style={styles.stampLine}>Location de voiture</Text>
+
+          <View style={styles.lowerRightCol}>
+            <View style={styles.infoBox}>
+              <Field label="Type de véhicule :" value={vehicle ? `${vehicle.brand} ${vehicle.model}` : reservation.vehicle_label} />
+              <Field label="Matricule :" value={reservation.registration_plate} />
+
+              <View style={styles.infoBoxGap} />
+              <Field label="Nombre de jours :" value={`${billing.days}`} />
+              <Field label="Prix par jours :" value={`${dailyRate.toFixed(2)} DH`} />
+              <Field label="Total TTC :" value={`${billing.totalTTC.toFixed(2)} DH`} strong />
+              <Field label="Avance :" value={`${billing.avance.toFixed(2)} DH`} />
+              <Field label="Reste à payer :" value={`${billing.resteAPayer.toFixed(2)} DH`} strong />
+
+              <View style={styles.infoBoxGap} />
+              <Field label="Prolongation :" value={reservation.prolongation} />
+
+              <View style={styles.infoBoxGap} />
+              <Field
+                label="Retour Prévu le :"
+                value={
+                  reservation.retour_prevu_le
+                    ? `${formatDate(reservation.retour_prevu_le)} à ${new Date(reservation.retour_prevu_le).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
+                    : ""
+                }
+              />
+            </View>
+
+            {/* Visa / stamp: owner's signature big, tampon stamp small below it */}
+            <View style={styles.visaBox}>
+              <Text style={styles.visaLabel}>Visa Direction :</Text>
+              <View style={styles.visaSigWrap}>
+                {reservation.admin_signature_data ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <Image src={reservation.admin_signature_data} style={styles.visaSigImage} />
+                ) : null}
+              </View>
+              {HAS_TAMPON && TAMPON_DATA_URI ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image src={TAMPON_DATA_URI} style={styles.tamponImage} />
+              ) : (
+                <>
+                  <Text style={styles.stampWordmark}>DRIVARY CAR</Text>
+                  <Text style={styles.stampLine}>ICE: {siteConfig.ice}</Text>
+                  <Text style={styles.stampLine}>GSM: {siteConfig.stampPhone}</Text>
+                  <Text style={styles.stampLine}>Location de voiture</Text>
+                </>
+              )}
+            </View>
           </View>
         </View>
 

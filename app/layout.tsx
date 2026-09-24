@@ -2,7 +2,7 @@
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Drivary Reda Car — Admin",
+  title: "Drivary Car - Admin",
 };
 
 export default function RootLayout({
