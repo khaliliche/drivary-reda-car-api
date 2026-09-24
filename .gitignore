@@ -57,3 +57,7 @@ vercel.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backups
+*.bak*
+.walkin-signing-backup/

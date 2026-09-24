@@ -191,32 +191,13 @@ export async function updateVehicleAction(id: number, formData: FormData) {
     image_url: uploadedUrl ?? existingUrl,
   });
 
-  if (uploadedUrl && existingUrl && uploadedUrl !== existingUrl) {
-    await removeStorageObject(existingUrl); // drop the replaced image
-  }
-
   revalidateAll();
   redirect("/admin/real");
 }
 
-async function removeStorageObject(publicUrl: string | null | undefined) {
-  if (!publicUrl) return;
-  try {
-    const marker = `/object/public/${STORAGE_BUCKET}/`;
-    const idx = publicUrl.indexOf(marker);
-    if (idx === -1) return; // not one of ours (e.g. external URL) — leave it alone
-    const path = publicUrl.slice(idx + marker.length);
-    await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]);
-  } catch {
-    // Never block the DB operation if storage cleanup fails.
-  }
-}
-
 export async function deleteVehicleAction(id: number) {
   await requireAdmin();
-  const vehicle = await getVehicleById(id);
   await deleteVehicle(id);
-  await removeStorageObject(vehicle?.image_url);
   revalidateAll();
 }
 

@@ -1,4 +1,4 @@
-﻿﻿import { Fragment } from "react";
+﻿import { Fragment, type ComponentProps } from "react";
 import { existsSync } from "fs";
 import { join } from "path";
 import { Document, Page, View, Text, StyleSheet, Svg, Rect, Circle, Path, Line, Image, Font } from "@react-pdf/renderer";
@@ -35,7 +35,13 @@ if (HAS_ARABIC_FONT) {
 // Renders Arabic text only once a real Arabic-capable font is registered;
 // renders nothing at all otherwise (never falls back to Helvetica for
 // Arabic text — see note above).
-function Arabic({ style, children }: { style: object; children: string }) {
+function Arabic({
+  style,
+  children,
+}: {
+  style: ComponentProps<typeof Text>["style"];
+  children: string;
+}) {
   if (!HAS_ARABIC_FONT) return null;
   return <Text style={[style, { fontFamily: "NotoSansArabic" }]}>{children}</Text>;
 }
@@ -350,7 +356,7 @@ export function ContractDocument({
     min_rental_days: vehicle?.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS,
   };
   const billing = resolveBilling(vehiclePricing, reservation);
-  const dailyRate = getDailyRate(vehiclePricing, billing.days);
+    const dailyRate = Number(getDailyRate(vehiclePricing, billing.days)) || 0;
   const contractNumber = reservation.contract_number ?? "";
 
   return (
@@ -497,7 +503,13 @@ export function ContractDocument({
         {/* Fuel gauge + damage diagram + Visa Direction */}
         <View style={styles.diagramRow}>
           <View style={styles.diagramCol}>
-            <FuelGauge level={reservation.fuel_level_out} />
+                        <FuelGauge
+              level={
+                reservation.fuel_level_out == null
+                  ? null
+                  : Number(reservation.fuel_level_out)
+              }
+            />
             <Text style={styles.carbLabel}>CARBURANT :</Text>
             <View style={styles.carbRow}>
               <View style={[styles.carbBox, ...(reservation.fuel_type === "super_sans_plomb" ? [styles.carbBoxChecked] : [])]} />
@@ -509,7 +521,7 @@ export function ContractDocument({
             </View>
           </View>
           <View style={styles.carDiagramCol}>
-            <CarDiagram damages={reservation.damages} />
+                        <CarDiagram damages={reservation.damages ?? []} />
           </View>
           <View style={styles.visaCol}>
             <Text style={styles.visaLabel}>Visa Direction :</Text>
