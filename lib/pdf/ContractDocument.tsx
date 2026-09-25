@@ -41,6 +41,13 @@ const HAS_LOGO = existsSync(LOGO_PATH);
 const TAMPON_PATH = join(process.cwd(), "public/tampon.png");
 const HAS_TAMPON = existsSync(TAMPON_PATH);
 
+// "Conditions Générales" (terms & conditions) scan — always appended as
+// page 2 of the contract. Same fail-open pattern as the logo/tampon: if
+// the asset is ever missing, we just skip the second page instead of
+// breaking PDF generation.
+const CONDITIONS_PATH = join(process.cwd(), "public/conditions-generales.jpg");
+const HAS_CONDITIONS = existsSync(CONDITIONS_PATH);
+
 // We pass these to react-pdf's <Image> as base64 data URIs rather than
 // raw filesystem paths. Passing a bare path string is fragile across
 // platforms — Windows absolute paths ("C:\Users\...") start with what
@@ -55,6 +62,10 @@ const LOGO_DATA_URI = HAS_LOGO
 
 const TAMPON_DATA_URI = HAS_TAMPON
   ? `data:image/png;base64,${readFileSync(TAMPON_PATH).toString("base64")}`
+  : null;
+
+const CONDITIONS_DATA_URI = HAS_CONDITIONS
+  ? `data:image/jpeg;base64,${readFileSync(CONDITIONS_PATH).toString("base64")}`
   : null;
 
 // Renders Arabic text only once a real Arabic-capable font is registered;
@@ -88,6 +99,10 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     color: BLACK,
   },
+
+  // ---- Page 2: Conditions Générales (full-bleed scan) ----
+  conditionsPage: { padding: 0 },
+  conditionsImage: { width: "100%", height: "100%", objectFit: "contain" },
 
   // ---- Header ----
   headerRow: {
@@ -601,6 +616,14 @@ export function ContractDocument({
           <Text style={styles.footerText}>{siteConfig.email}   Gsm : {siteConfig.footerPhone}</Text>
         </View>
       </Page>
+
+      {/* Page 2: Conditions Générales — always appended, as-is */}
+      {HAS_CONDITIONS && CONDITIONS_DATA_URI ? (
+        <Page size="A4" style={styles.conditionsPage}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={CONDITIONS_DATA_URI} style={styles.conditionsImage} />
+        </Page>
+      ) : null}
     </Document>
   );
 }

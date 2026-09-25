@@ -13,23 +13,28 @@ export async function POST(request: NextRequest) {
 
   const {
     vehicle_id: vehicleId,
-    prenom,
+        prenom,
     nom,
     date_naissance: dateNaissance,
     cin_number: cinNumber,
+    cin_delivered_le: cinDeliveredLe = null,
     license_issue_date: licenseIssueDate,
     driver_address: driverAddress,
     driver_phone: driverPhone,
     driver_license_number: driverLicenseNumber,
     driver_passport_number: driverPassportNumber,
+    passport_delivered_le: passportDeliveredLe,
     has_second_driver: hasSecondDriver,
     second_driver_prenom: secondDriverPrenom = "",
     second_driver_nom: secondDriverNom = "",
+    second_driver_date_naissance: secondDriverDateNaissance = null,
     second_driver_address: secondDriverAddress = "",
     second_driver_phone: secondDriverPhone = "",
     second_driver_cin_number: secondDriverCinNumber = "",
+    second_driver_cin_delivered_le: secondDriverCinDeliveredLe = null,
     second_driver_license_number: secondDriverLicenseNumber = "",
     second_driver_passport_number: secondDriverPassportNumber = "",
+    second_driver_passport_delivered_le: secondDriverPassportDeliveredLe = null,
     start_date: startDate,
     end_date: endDate,
     start_time: startTime,
@@ -38,12 +43,17 @@ export async function POST(request: NextRequest) {
 
   if (
     !vehicleId || !prenom || !nom || !dateNaissance || !cinNumber || !licenseIssueDate ||
-    !driverAddress || !driverPhone || !driverLicenseNumber || !driverPassportNumber ||
+    !driverAddress || !driverPhone || !driverLicenseNumber || !driverPassportNumber || !passportDeliveredLe ||
     !startDate || !endDate || !startTime || !endTime
   ) {
     return NextResponse.json({ success: false, errorCode: "missingFields" }, { status: 400 });
   }
-  if (hasSecondDriver && (!secondDriverPrenom || !secondDriverNom || !secondDriverCinNumber)) {
+  // cin_delivered_le is intentionally optional for online clients (not every
+  // renter has that date handy) — the admin can fill it in later.
+  if (
+    hasSecondDriver &&
+    (!secondDriverPrenom || !secondDriverNom || !secondDriverCinNumber || !secondDriverDateNaissance)
+  ) {
     return NextResponse.json({ success: false, errorCode: "missingFields" }, { status: 400 });
   }
   if (new Date(endDate) <= new Date(startDate)) {
@@ -72,23 +82,28 @@ export async function POST(request: NextRequest) {
   await createReservation({
     vehicle_id: vehicle.id,
     vehicle_label: vehicleLabel,
-    prenom,
+        prenom,
     nom,
     date_naissance: dateNaissance,
     cin_number: cinNumber,
+    cin_delivered_le: cinDeliveredLe || null,
     license_issue_date: licenseIssueDate,
     driver_address: driverAddress,
     driver_phone: driverPhone,
     driver_license_number: driverLicenseNumber,
     driver_passport_number: driverPassportNumber,
+    passport_delivered_le: passportDeliveredLe,
     has_second_driver: hasSecondDriver,
     second_driver_prenom: hasSecondDriver ? secondDriverPrenom : "",
     second_driver_nom: hasSecondDriver ? secondDriverNom : "",
+    second_driver_date_naissance: hasSecondDriver ? secondDriverDateNaissance : null,
     second_driver_address: hasSecondDriver ? secondDriverAddress : "",
     second_driver_phone: hasSecondDriver ? secondDriverPhone : "",
     second_driver_cin_number: hasSecondDriver ? secondDriverCinNumber : "",
+    second_driver_cin_delivered_le: hasSecondDriver ? (secondDriverCinDeliveredLe || null) : null,
     second_driver_license_number: hasSecondDriver ? secondDriverLicenseNumber : "",
     second_driver_passport_number: hasSecondDriver ? secondDriverPassportNumber : "",
+    second_driver_passport_delivered_le: hasSecondDriver ? (secondDriverPassportDeliveredLe || null) : null,
     start_date: startDate,
     end_date: endDate,
     start_time: startTime,

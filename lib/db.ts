@@ -211,20 +211,25 @@ export type CreateReservationInput = {
   nom: string;
   date_naissance: string;
   cin_number: string;
+  cin_delivered_le?: string | null;
   license_issue_date: string;
   driver_address: string;
   driver_phone: string;
   driver_license_number: string;
   driver_passport_number: string;
+  passport_delivered_le?: string | null;
 
   has_second_driver: boolean;
   second_driver_prenom?: string;
   second_driver_nom?: string;
+  second_driver_date_naissance?: string | null;
   second_driver_address?: string;
   second_driver_phone?: string;
   second_driver_cin_number?: string;
+  second_driver_cin_delivered_le?: string | null;
   second_driver_license_number?: string;
   second_driver_passport_number?: string;
+  second_driver_passport_delivered_le?: string | null;
 
   start_date: string;
   end_date: string;
@@ -238,19 +243,21 @@ export async function createReservation(
   const rows = await sql<Reservation[]>`
     INSERT INTO reservations
       (vehicle_id, vehicle_label,
-       prenom, nom, date_naissance, cin_number, license_issue_date,
-       driver_address, driver_phone, driver_license_number, driver_passport_number,
+       prenom, nom, date_naissance, cin_number, cin_delivered_le, license_issue_date,
+       driver_address, driver_phone, driver_license_number, driver_passport_number, passport_delivered_le,
        has_second_driver,
-       second_driver_prenom, second_driver_nom, second_driver_address, second_driver_phone,
-       second_driver_cin_number, second_driver_license_number, second_driver_passport_number,
+       second_driver_prenom, second_driver_nom, second_driver_date_naissance, second_driver_address, second_driver_phone,
+       second_driver_cin_number, second_driver_cin_delivered_le,
+       second_driver_license_number, second_driver_passport_number, second_driver_passport_delivered_le,
        start_date, end_date, start_time, end_time)
     VALUES
       (${data.vehicle_id}, ${data.vehicle_label},
-       ${data.prenom}, ${data.nom}, ${data.date_naissance}, ${data.cin_number}, ${data.license_issue_date},
-       ${data.driver_address}, ${data.driver_phone}, ${data.driver_license_number}, ${data.driver_passport_number},
+       ${data.prenom}, ${data.nom}, ${data.date_naissance}, ${data.cin_number}, ${data.cin_delivered_le ?? null}, ${data.license_issue_date},
+       ${data.driver_address}, ${data.driver_phone}, ${data.driver_license_number}, ${data.driver_passport_number}, ${data.passport_delivered_le ?? null},
        ${data.has_second_driver},
-       ${data.second_driver_prenom ?? ""}, ${data.second_driver_nom ?? ""}, ${data.second_driver_address ?? ""}, ${data.second_driver_phone ?? ""},
-       ${data.second_driver_cin_number ?? ""}, ${data.second_driver_license_number ?? ""}, ${data.second_driver_passport_number ?? ""},
+       ${data.second_driver_prenom ?? ""}, ${data.second_driver_nom ?? ""}, ${data.second_driver_date_naissance ?? null}, ${data.second_driver_address ?? ""}, ${data.second_driver_phone ?? ""},
+       ${data.second_driver_cin_number ?? ""}, ${data.second_driver_cin_delivered_le ?? null},
+       ${data.second_driver_license_number ?? ""}, ${data.second_driver_passport_number ?? ""}, ${data.second_driver_passport_delivered_le ?? null},
        ${data.start_date}, ${data.end_date}, ${data.start_time}, ${data.end_time})
     RETURNING *
   `;
