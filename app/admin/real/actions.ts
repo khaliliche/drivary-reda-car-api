@@ -409,7 +409,9 @@ export async function createWalkInReservationAction(
   const vehicle = await getVehicleById(vehicleId);
 
   if (!vehicle) {
-    throw new Error("Vehicule introuvable.");
+    redirect(
+      "/admin/real/reservations/new?error=vehicle"
+    );
   }
 
   const startDate = String(
@@ -425,8 +427,8 @@ export async function createWalkInReservationAction(
     !endDate ||
     new Date(endDate) <= new Date(startDate)
   ) {
-    throw new Error(
-      "La date de retour doit etre apres la date de depart."
+    redirect(
+      "/admin/real/reservations/new?error=dates"
     );
   }
 
@@ -496,8 +498,8 @@ export async function createWalkInReservationAction(
   });
 
   if (!result.ok) {
-    throw new Error(
-      "Ce vehicule n'est pas disponible sur ces dates."
+    redirect(
+      "/admin/real/reservations/new?error=conflict"
     );
   }
 
