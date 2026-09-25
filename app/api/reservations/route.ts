@@ -43,13 +43,14 @@ export async function POST(request: NextRequest) {
 
   if (
     !vehicleId || !prenom || !nom || !dateNaissance || !cinNumber || !licenseIssueDate ||
-    !driverAddress || !driverPhone || !driverLicenseNumber || !driverPassportNumber || !passportDeliveredLe ||
+    !driverAddress || !driverPhone || !driverLicenseNumber || !driverPassportNumber ||
     !startDate || !endDate || !startTime || !endTime
   ) {
     return NextResponse.json({ success: false, errorCode: "missingFields" }, { status: 400 });
   }
-  // cin_delivered_le is intentionally optional for online clients (not every
-  // renter has that date handy) — the admin can fill it in later.
+  // cin_delivered_le and passport_delivered_le are intentionally optional for
+  // online clients (not every renter has that date handy) — the admin can
+  // fill it in later.
   if (
     hasSecondDriver &&
     (!secondDriverPrenom || !secondDriverNom || !secondDriverCinNumber || !secondDriverDateNaissance)
