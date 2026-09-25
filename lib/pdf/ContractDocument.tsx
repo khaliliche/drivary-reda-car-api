@@ -81,11 +81,13 @@ function Arabic({
   // plain (non-SVG) <Text>, so we deliberately keep the prop loosely
   // typed here rather than fight the overload — it's still safe because
   // the only callers are the two `styles.*` objects below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   style?: any;
   children: string;
 }) {
   if (!HAS_ARABIC_FONT) return null;
   return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     <Text style={[style, { fontFamily: "NotoSansArabic" }] as any}>
       {children}
     </Text>
