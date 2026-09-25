@@ -39,7 +39,7 @@ export const FUEL_LEVELS = [0, 0.25, 0.5, 0.75, 1] as const;
 
 // Fallback only — real minimum now lives per-vehicle in the DB
 // (vehicles.min_rental_days). This is used if that column is null.
-export const DEFAULT_MIN_RENTAL_DAYS = 5;
+export const DEFAULT_MIN_RENTAL_DAYS = 2;
 
 // Minimal shape needed to price a rental. Matches the vehicles columns.
 export interface VehiclePricing {
@@ -49,11 +49,10 @@ export interface VehiclePricing {
   min_rental_days: number;
 }
 
-export function getDailyRate(vehicle: VehiclePricing, days: number): number {
-  // Postgres returns NUMERIC columns (price_extended_15, price_monthly_30)
-  // as strings, so always coerce to a number here.
-  if (days >= 30) return Number(vehicle.price_monthly_30);
-  if (days >= 15) return Number(vehicle.price_extended_15);
+export function getDailyRate(vehicle: VehiclePricing, _days: number): number {
+  // Tiered discounts removed — every rental is billed at the vehicle's
+  // plain daily rate, however long it runs. price_extended_15 /
+  // price_monthly_30 are ignored here on purpose.
   return Number(vehicle.price_per_day);
 }
 

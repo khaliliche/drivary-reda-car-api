@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, errorCode: "vehicleNotFound" }, { status: 404 });
   }
 
-  const minDays = vehicle.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS;
+   const minDays = DEFAULT_MIN_RENTAL_DAYS;
   const requestedDays = daysBetween(startDate, endDate);
   if (!isRentalDurationValid(requestedDays, minDays)) {
     return NextResponse.json(
