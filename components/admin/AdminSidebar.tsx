@@ -25,7 +25,7 @@ export default function AdminSidebar({
         <Link href="/admin/real" className="mb-8 flex items-center gap-2 px-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/drivary-car-logo.png"
+            src="/logo-badge.png"
             alt="Drivary Car"
             className="h-9 w-9 rounded-lg object-cover"
           />

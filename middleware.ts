@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
 
   const cookie = request.cookies.get("admin_session")?.value;
 
-  if (!cookie || !timingSafeEqual(cookie, expectedToken)) {
+  if (!cookie || !(await timingSafeEqual(cookie, expectedToken))) {
     return NextResponse.redirect(new URL("/admin/real/login", request.url));
   }
 

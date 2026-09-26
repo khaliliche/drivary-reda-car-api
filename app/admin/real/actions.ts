@@ -54,7 +54,7 @@ async function requireAdmin() {
   if (
     !expectedToken ||
     !cookie ||
-    !timingSafeEqual(cookie, expectedToken)
+    !(await timingSafeEqual(cookie, expectedToken))
   ) {
     redirect("/admin/real/login");
   }

@@ -33,7 +33,13 @@ Next.js 16 (App Router) - React 19 - Tailwind CSS 4 - postgres.js
 2. Create a PostgreSQL database and load the schema:
 
    - Fresh database: run `schema.sql`
-   - Existing database: run the files in `migrations/` in order
+   - Existing database: `migrations/` is not a complete history — it does
+     not bring an older database fully up to date with `schema.sql`.
+     Compare your database's current columns against `schema.sql` by hand
+     (e.g. `SELECT column_name FROM information_schema.columns WHERE
+     table_name = 'vehicles';`) and apply whatever `ALTER TABLE`
+     statements are needed to close the gap before relying on this app
+     against that database.
 
 3. Set environment variables (`.env.local`):
 

@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
-import { getTieredPricing } from "./pricing";
 
 function requireDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
@@ -27,8 +26,6 @@ export type Vehicle = {
   brand: string;
   model: string;
   price_per_day: number;
-  price_extended_15: number;
-  price_monthly_30: number;
   min_rental_days: number;
   description: string | null;
   image_url: string | null;
@@ -171,10 +168,9 @@ export async function createVehicle(data: {
   image_url: string;
 }) {
   const slug = await uniqueSlug(slugify(data.brand, data.model));
-  const { price_extended_15, price_monthly_30 } = getTieredPricing(data.price_per_day);
   const rows = await sql<Vehicle[]>`
-    INSERT INTO vehicles (slug, brand, model, price_per_day, price_extended_15, price_monthly_30, description, image_url)
-    VALUES (${slug}, ${data.brand}, ${data.model}, ${data.price_per_day}, ${price_extended_15}, ${price_monthly_30}, ${data.description}, ${data.image_url})
+    INSERT INTO vehicles (slug, brand, model, price_per_day, description, image_url)
+    VALUES (${slug}, ${data.brand}, ${data.model}, ${data.price_per_day}, ${data.description}, ${data.image_url})
     RETURNING *
   `;
   return rows[0];
@@ -186,12 +182,10 @@ export async function updateVehicle(
 ) {
   const base = slugify(data.brand, data.model);
   const slug = await uniqueSlug(base, id);
-  const { price_extended_15, price_monthly_30 } = getTieredPricing(data.price_per_day);
   const rows = await sql<Vehicle[]>`
     UPDATE vehicles
     SET slug = ${slug}, brand = ${data.brand}, model = ${data.model},
-        price_per_day = ${data.price_per_day}, price_extended_15 = ${price_extended_15},
-        price_monthly_30 = ${price_monthly_30}, description = ${data.description},
+        price_per_day = ${data.price_per_day}, description = ${data.description},
         image_url = ${data.image_url}
     WHERE id = ${id}
     RETURNING *

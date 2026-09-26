@@ -43,16 +43,13 @@ export const DEFAULT_MIN_RENTAL_DAYS = 2;
 
 // Minimal shape needed to price a rental. Matches the vehicles columns.
 export interface VehiclePricing {
-  price_per_day: number;        // 5–14 days (base rate)
-  price_extended_15: number;    // 15–29 days
-  price_monthly_30: number;     // 30+ days
+  price_per_day: number;
   min_rental_days: number;
 }
 
 export function getDailyRate(vehicle: VehiclePricing, _days: number): number {
-  // Tiered discounts removed — every rental is billed at the vehicle's
-  // plain daily rate, however long it runs. price_extended_15 /
-  // price_monthly_30 are ignored here on purpose.
+  // Every rental is billed at the vehicle's plain daily rate, however
+  // long it runs. There are no tiered/discounted rates.
   return Number(vehicle.price_per_day);
 }
 

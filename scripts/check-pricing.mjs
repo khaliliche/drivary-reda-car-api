@@ -20,7 +20,7 @@ const { default: postgres } = await import("postgres");
 const sql = postgres(process.env.DATABASE_URL, { ssl: "require" });
 
 const rows = await sql`
-  SELECT id, brand, model, min_rental_days, price_per_day, price_extended_15, price_monthly_30
+  SELECT id, brand, model, min_rental_days, price_per_day
   FROM vehicles
   ORDER BY id
 `;

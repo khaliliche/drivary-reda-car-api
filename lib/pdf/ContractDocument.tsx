@@ -421,10 +421,8 @@ export function ContractDocument({
   reservation: Reservation;
   vehicle: Vehicle | null;
 }) {
-  const vehiclePricing = {
+    const vehiclePricing = {
     price_per_day: vehicle?.price_per_day ?? 0,
-    price_extended_15: vehicle?.price_extended_15 ?? vehicle?.price_per_day ?? 0,
-    price_monthly_30: vehicle?.price_monthly_30 ?? vehicle?.price_per_day ?? 0,
     min_rental_days: vehicle?.min_rental_days ?? DEFAULT_MIN_RENTAL_DAYS,
   };
   const billing = resolveBilling(vehiclePricing, reservation);

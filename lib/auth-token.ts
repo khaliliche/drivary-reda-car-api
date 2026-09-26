@@ -11,11 +11,14 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-export function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  // Compare fixed-length SHA-256 digests instead of the raw strings, so
+  // there's no length-mismatch early exit that leaks how long the correct
+  // value is via response timing.
+  const [hashA, hashB] = await Promise.all([sha256Hex(a), sha256Hex(b)]);
   let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < hashA.length; i++) {
+    result |= hashA.charCodeAt(i) ^ hashB.charCodeAt(i);
   }
   return result === 0;
 }
@@ -37,5 +40,5 @@ export async function getExpectedSessionToken(): Promise<string | null> {
 export async function checkPassword(submitted: string): Promise<boolean> {
   const password = process.env.ADMIN_PASSWORD;
   if (!password || !submitted) return false;
-  return timingSafeEqual(submitted, password);
+  return await timingSafeEqual(submitted, password);
 }

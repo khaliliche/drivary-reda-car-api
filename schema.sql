@@ -13,10 +13,8 @@ CREATE TABLE vehicles (
   slug TEXT UNIQUE NOT NULL,
   brand TEXT NOT NULL,
   model TEXT NOT NULL,
-  price_per_day INTEGER NOT NULL,
-  min_rental_days INTEGER NOT NULL DEFAULT 5,
-  price_extended_15 NUMERIC NOT NULL,
-  price_monthly_30 NUMERIC NOT NULL,
+    price_per_day INTEGER NOT NULL,
+  min_rental_days INTEGER NOT NULL DEFAULT 2,
   description TEXT,
   image_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

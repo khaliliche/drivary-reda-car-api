@@ -68,6 +68,21 @@ export async function POST(request: NextRequest) {
   if (!file.type.startsWith("image/")) {
     return NextResponse.json({ success: false, errorCode: "invalidImage" }, { status: 400 });
   }
+  const headerBytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const isJpeg = headerBytes[0] === 0xff && headerBytes[1] === 0xd8 && headerBytes[2] === 0xff;
+  const isPng =
+    headerBytes[0] === 0x89 && headerBytes[1] === 0x50 && headerBytes[2] === 0x4e && headerBytes[3] === 0x47;
+  const isWebp =
+    headerBytes[0] === 0x52 &&
+    headerBytes[1] === 0x49 &&
+    headerBytes[2] === 0x46 &&
+    headerBytes[3] === 0x46 &&
+    headerBytes[8] === 0x57 &&
+    headerBytes[9] === 0x45 &&
+    headerBytes[10] === 0x42;
+  if (!isJpeg && !isPng && !isWebp) {
+    return NextResponse.json({ success: false, errorCode: "invalidImage" }, { status: 400 });
+  }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -78,18 +93,7 @@ export async function POST(request: NextRequest) {
       success: true,
       docType,
       fields,
-      // Lets the UI warn the customer when almost nothing was read (bad
-      // lighting, blur, wrong document) instead of silently showing an
-      // empty form.
       fieldsFound: Object.keys(fields).length,
-      // TEMP DEBUG: the raw text Tesseract actually read, so the parsing
-      // rules in lib/ocr/parse-document.ts can be tuned against real
-      // output instead of guessed blind. Remove this field (or gate it
-      // behind an env var) once extraction is reliable enough for
-      // production — it's not sensitive to return to the same browser
-      // that just uploaded the document, but there's no reason to keep
-      // shipping it once it's no longer useful.
-      debugRawText: text,
     });
   } catch (err) {
     console.error("OCR extraction failed:", err);

@@ -55,16 +55,20 @@ async function getWorker(lang: OcrLang): Promise<Worker> {
   return worker;
 }
 
-/**
- * Runs OCR on a single image and returns the raw recognized text.
- * lang: "fra" for Moroccan CIN / permis de conduire, "eng" for the
- * passport MRZ (Latin/OCR-B character set).
- */
+let ocrQueue: Promise<unknown> = Promise.resolve();
+
 export async function recognizeText(imageBuffer: Buffer, lang: OcrLang = "fra"): Promise<string> {
-  const worker = await getWorker(lang);
   const processed = await preprocessForOcr(imageBuffer);
-  const {
-    data: { text },
-  } = await worker.recognize(processed);
-  return text;
+
+  const run = ocrQueue.then(async () => {
+    const worker = await getWorker(lang);
+    const {
+      data: { text },
+    } = await worker.recognize(processed);
+    return text;
+  });
+
+  ocrQueue = run.catch(() => {});
+
+  return run;
 }

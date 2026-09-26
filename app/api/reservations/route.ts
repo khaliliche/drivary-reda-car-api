@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
   if (new Date(endDate) <= new Date(startDate)) {
     return NextResponse.json({ success: false, errorCode: "invalidDateRange" }, { status: 400 });
   }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (startDate < todayIso) {
+    return NextResponse.json({ success: false, errorCode: "startDateInPast" }, { status: 400 });
+  }
   if (new Date(licenseIssueDate) > new Date()) {
     return NextResponse.json({ success: false, errorCode: "licenseDateInFuture" }, { status: 400 });
   }
