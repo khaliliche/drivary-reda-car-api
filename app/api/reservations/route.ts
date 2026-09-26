@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { createReservation, getVehicleById } from "@/lib/db";
-import { daysBetween, isRentalDurationValid, DEFAULT_MIN_RENTAL_DAYS } from "@/lib/contract";
+import { daysBetween, isRentalDurationValid, DEFAULT_MIN_RENTAL_DAYS, calculateAge } from "@/lib/contract";
 import { getClientIp, checkReservationLimit } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
   }
   if (new Date(licenseIssueDate) > new Date()) {
     return NextResponse.json({ success: false, errorCode: "licenseDateInFuture" }, { status: 400 });
+  }
+
+  const driverAge = calculateAge(dateNaissance);
+  if (driverAge < 18 || driverAge > 99) {
+    return NextResponse.json({ success: false, errorCode: "invalidAge" }, { status: 400 });
   }
 
   const vehicle = await getVehicleById(Number(vehicleId));
